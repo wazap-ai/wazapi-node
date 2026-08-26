@@ -1,0 +1,190 @@
+# @wazapi/sdk
+
+Official Node.js SDK for the [Wazapi](https://wazapi.io) Public API v1 — a
+server-to-server client for sending WhatsApp messages, triggering flows, and
+managing contacts/templates.
+
+- Zero runtime dependencies (uses the native `fetch` on Node 18+).
+- Fully typed against the OpenAPI contract (`GET /api/openapi/v1.json`).
+- Automatic `Idempotency-Key` generation for write operations.
+- Built-in polling helper for asynchronous operations.
+
+## Install
+
+```bash
+pnpm add @wazapi/sdk
+```
+
+## Quick start
+
+```ts
+import { WazapiClient } from '@wazapi/sdk'
+
+const wazapi = new WazapiClient({ token: process.env.WAZAPI_API_TOKEN! })
+
+// Discover a WhatsApp channel
+const channels = await wazapi.listChannels()
+const channel = channels.find((c) => c.capabilities.send_template)
+if (!channel) throw new Error('No channel able to send templates')
+
+// Fire a template and wait for the result
+const { operation } = await wazapi.sendTemplate(channel.uuid, '+5511999998888', {
+  name: 'order_confirmed',
+  parameters: ['Maria', '1847'],
+})
+const final = await wazapi.waitForOperation(operation.uuid)
+console.log(final.status) // 'succeeded' | 'failed'
+```
+
+## Sending a template (recommended flow)
+
+Templates must be **APPROVED** and you must send exactly the number of body
+parameters the template declares. Discover that shape first instead of guessing:
+
+```ts
+const template = await wazapi.getTemplate('order_confirmed')
+
+// How many positional {{1}}..{{n}} the body expects:
+const expected = template.variables.body_parameter_count
+
+// Templates needing a media/variable header, named params, or dynamic buttons
+// are not sendable through the API yet — check before building the payload:
+const sendable =
+  !template.variables.header?.has_variable &&
+  template.variables.header?.format !== 'IMAGE' &&
+  !template.variables.has_dynamic_buttons
+
+const { operation, replayed } = await wazapi.sendTemplate(
+  channel.uuid,
+  '+5511999998888',
+  { name: template.name, language: template.language, parameters: ['Maria', '1847'] },
+  // Optional: pass your own idempotency key (e.g. the order id) so retries
+  // never send twice. Omit it and the SDK generates a UUID per call.
+  'order-1847-confirmation'
+)
+```
+
+The send is asynchronous: the API returns `202 Accepted` with an operation you
+poll (or receive via webhook). `waitForOperation` handles the polling:
+
+```ts
+const result = await wazapi.waitForOperation(operation.uuid, {
+  intervalMs: 1000,
+  timeoutMs: 60_000,
+})
+if (result.status === 'failed') {
+  console.error(result.error?.code, result.error?.message)
+}
+```
+
+## Error handling
+
+Every non-2xx response throws a `WazapiError` carrying the stable error envelope:
+
+```ts
+import { WazapiError } from '@wazapi/sdk'
+
+try {
+  await wazapi.sendTemplate(channel.uuid, '+5511999998888', {
+    name: 'order_confirmed',
+    parameters: ['Maria'], // wrong count
+  })
+} catch (err) {
+  if (err instanceof WazapiError) {
+    console.error(err.code) // 'template_parameter_count_mismatch'
+    console.error(err.requestId) // quote this to support
+    if (err.isRateLimited) console.error('retry after', err.retryAfter, 's')
+  }
+}
+```
+
+Common template send error codes (all rejected synchronously, before an
+operation is created):
+
+| Code                                | Meaning                                              |
+| ----------------------------------- | ---------------------------------------------------- |
+| `template_not_found`                | No APPROVED template with that name.                 |
+| `template_language_unavailable`     | No approved version in the requested `language`.     |
+| `template_parameter_count_mismatch` | `parameters.length` ≠ `body_parameter_count`.        |
+| `template_format_unsupported`       | Needs media/variable header, named params, buttons.  |
+
+## Contacts
+
+```ts
+// Upsert by your own system's id — idempotent, safe to call repeatedly
+await wazapi.upsertContactByExternalId('customer-1847', {
+  phone: '+5511999998888',
+  name: 'Maria Silva',
+  custom_fields: { tier: 'gold' },
+})
+```
+
+## Webhooks
+
+Wazapi POSTs events to the HTTPS endpoint you register in **Settings → Wazapi API**.
+The SDK ships the payload types; the union is discriminated on `type`, so narrowing
+`event.type` narrows `event.data` with it.
+
+```ts
+import type { WazapiWebhookEvent } from '@wazapi/sdk'
+
+function handle(event: WazapiWebhookEvent) {
+  switch (event.type) {
+    case 'message.received':
+      return reply(event.data.contact_uuid, event.data.content)
+    case 'message.status.updated':
+      return markDelivered(event.data.message_uuid, event.data.status)
+    case 'flow.execution.updated':
+      return event.data.error ? alert(event.data.error.code) : done()
+  }
+}
+```
+
+Verify the signature over the **raw** body, before parsing:
+
+```ts
+import { createHmac, timingSafeEqual } from 'node:crypto'
+
+function verify(rawBody: string, headers: Record<string, string>, secret: string) {
+  const expected = createHmac('sha256', secret)
+    .update(`${headers['wazapi-timestamp']}.${rawBody}`)
+    .digest('hex')
+  const received = (headers['wazapi-signature'] ?? '').replace(/^v1=/, '')
+  const a = Buffer.from(expected)
+  const b = Buffer.from(received)
+  return a.length === b.length && timingSafeEqual(a, b)
+}
+```
+
+Delivery is at-least-once — deduplicate on `event.id` (also sent as the
+`Wazapi-Event-Id` header). Wazapi treats only `2xx` as success and retries after
+1min, 5min, 30min, 2h, 12h and 24h.
+
+Two fields are added at delivery time when they apply: `data.external_id`, your own
+identifier echoed back when the contact was linked via `upsertContactByExternalId`,
+and `data.tracking`, the allowlisted attribution subset (`utm_*`, click IDs, ad
+referral fields). No other custom field key is ever forwarded.
+
+## Configuration
+
+```ts
+new WazapiClient({
+  token: 'waz_api_...',
+  baseUrl: 'https://wazapi.io/api/v1', // default
+  timeoutMs: 30_000, // per-request timeout
+  idempotencyKeyFactory: () => myKey(), // default: crypto.randomUUID()
+})
+```
+
+## API surface
+
+- `listChannels()`
+- `listContacts(params)`, `getContact(uuid)`, `updateContact(uuid, input)`, `upsertContactByExternalId(externalId, input)`
+- `listTemplates(params)`, `getTemplate(name)`
+- `listFlows(params)`, `getFlow(uuid)`, `executeFlow(flowUuid, input, idempotencyKey?)`
+- `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`
+- `sendMessage(input, idempotencyKey?)`, `sendText(...)`, `sendTemplate(...)`
+- `getOperation(uuid)`, `waitForOperation(uuid, options?)`
+
+See the OpenAPI contract at `https://wazapi.io/api/openapi/v1.json` for the full
+schema.

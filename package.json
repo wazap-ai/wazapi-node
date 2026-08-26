@@ -1,0 +1,49 @@
+{
+  "name": "@wazapi/sdk",
+  "version": "0.2.0",
+  "description": "Official Node.js SDK for the Wazapi Public API v1",
+  "license": "MIT",
+  "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://wazapi.io",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wazap-ai/wazapi-node.git"
+  },
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test --experimental-strip-types test/*.test.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "wazapi",
+    "whatsapp",
+    "api",
+    "sdk",
+    "messaging"
+  ],
+  "devDependencies": {
+    "typescript": "^5.6.0"
+  },
+  "bugs": {
+    "url": "https://github.com/wazap-ai/wazapi-node/issues"
+  }
+}
