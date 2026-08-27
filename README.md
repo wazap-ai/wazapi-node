@@ -108,6 +108,27 @@ operation is created):
 | `template_parameter_count_mismatch` | `parameters.length` ≠ `body_parameter_count`.        |
 | `template_format_unsupported`       | Needs media/variable header, named params, buttons.  |
 
+Compliance gates on template sends (rejected synchronously with 403/422, and
+re-checked by the worker — the same codes can appear as `error.code` on the
+polled operation):
+
+| Code                                    | Meaning                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------ |
+| `marketing_sends_disabled`              | MARKETING sending is off for the company (an owner enables it in the dashboard) or platform-wide. |
+| `recipient_opted_out`                   | The recipient opted out (reply keyword, native WhatsApp control, or manual suppression). Filter on `contact.marketing_opted_out`. |
+| `duplicate_template_send`               | Same template already sent to this phone in the last 24h.                |
+| `template_frequency_cap_exceeded`       | Per-contact MARKETING cap (1/24h, 3/7 days).                             |
+| `company_daily_marketing_cap_exceeded`  | Company-wide daily MARKETING cap.                                        |
+| `channel_marketing_paused`              | Meta flagged the number's quality; MARKETING is paused temporarily.      |
+| `template_quality_blocked`              | This specific template dropped to RED quality on Meta.                   |
+| `send_pacing_timeout`                   | Operation-only: delivery was deferred by per-channel pacing for too long. |
+
+Delivery is paced per channel to protect number quality, so an accepted `202`
+can take longer to complete under load — poll the operation instead of
+re-sending. AUTHENTICATION (OTP) templates are exempt from opt-outs and caps.
+Use `error.isComplianceBlocked` to branch on this whole family, and the
+`SendComplianceErrorCode` type to narrow `operation.error.code`.
+
 ## Contacts
 
 ```ts

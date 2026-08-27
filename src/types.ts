@@ -49,6 +49,14 @@ export interface Contact {
   email: string | null
   tags: string[]
   custom_fields: Record<string, unknown>
+  /**
+   * True when the contact opted out of marketing messages (reply keyword such
+   * as PARAR/STOP, the native WhatsApp control, or manual suppression).
+   * Sending a MARKETING template to an opted-out contact fails with
+   * `recipient_opted_out` — filter your audience on this before a campaign.
+   */
+  marketing_opted_out: boolean
+  marketing_opt_out_at: string | null
   last_interaction_at: string | null
   created_at: string | null
   updated_at: string | null
@@ -128,6 +136,23 @@ export type OperationStatus =
   | 'waiting'
   | 'succeeded'
   | 'failed'
+
+/**
+ * Compliance codes the send guard can answer with. They surface both as a
+ * synchronous 4xx on `POST /messages` (403 for the two `*_disabled` codes,
+ * 422 for the rest) and as `error.code` on the polled operation —
+ * `send_pacing_timeout` only ever appears on the operation.
+ */
+export type SendComplianceErrorCode =
+  | 'marketing_sends_disabled'
+  | 'template_sends_disabled'
+  | 'recipient_opted_out'
+  | 'duplicate_template_send'
+  | 'template_frequency_cap_exceeded'
+  | 'company_daily_marketing_cap_exceeded'
+  | 'channel_marketing_paused'
+  | 'template_quality_blocked'
+  | 'send_pacing_timeout'
 
 export interface Operation {
   uuid: string
