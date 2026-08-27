@@ -33,4 +33,23 @@ export class WazapiError extends Error {
   get isRateLimited(): boolean {
     return this.status === 429
   }
+
+  /**
+   * True when the send was refused by a compliance gate (opt-out, frequency
+   * cap, marketing policy, channel/template quality pause) rather than by a
+   * malformed request. Retrying without changing the audience will not help —
+   * fix the recipient list or the account policy instead.
+   */
+  get isComplianceBlocked(): boolean {
+    return [
+      'marketing_sends_disabled',
+      'template_sends_disabled',
+      'recipient_opted_out',
+      'duplicate_template_send',
+      'template_frequency_cap_exceeded',
+      'company_daily_marketing_cap_exceeded',
+      'channel_marketing_paused',
+      'template_quality_blocked',
+    ].includes(this.code)
+  }
 }
