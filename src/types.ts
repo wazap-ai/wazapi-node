@@ -320,6 +320,12 @@ export interface StoreOrder {
   source: StoreOrderSource
   /** Provider-side id for orders that originated outside the storefront (WhatsApp catalog order message id). */
   provider_order_id: string | null
+  /**
+   * Allowlisted attribution subset stamped at creation (utm_*, click IDs incl.
+   * ctwa_clid, ad_*/referral_*). Conversation values win over contact values
+   * (last touch over first touch). Null when the order has no attributable source.
+   */
+  tracking: Record<string, unknown> | null
   customer_name: string
   customer_phone: string
   contact_uuid: string | null
