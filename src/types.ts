@@ -309,11 +309,17 @@ export interface StoreOrderItem {
   total_cents: number
 }
 
+export type StoreOrderSource = 'storefront' | 'whatsapp_catalog'
+
 export interface StoreOrder {
   uuid: string
   /** Short human reference (first 8 chars of the uuid) shown to the customer. */
   ref: string
   status: StoreOrderStatus
+  /** Where the order was placed: storefront checkout or the native WhatsApp catalog. */
+  source: StoreOrderSource
+  /** Provider-side id for orders that originated outside the storefront (WhatsApp catalog order message id). */
+  provider_order_id: string | null
   customer_name: string
   customer_phone: string
   contact_uuid: string | null
@@ -324,7 +330,8 @@ export interface StoreOrder {
   shipping_name: string | null
   shipping_cents: number
   total_cents: number
-  payment_method: 'pix' | 'link' | 'on_delivery'
+  /** `catalog` = order from the native WhatsApp catalog (payment arranged in chat). */
+  payment_method: 'pix' | 'link' | 'on_delivery' | 'catalog'
   notes: string | null
   created_at: string | null
   updated_at: string | null
@@ -410,11 +417,12 @@ export interface FlowExecutionUpdatedData {
   error: { code: string; message: string | null } | null
 }
 
-/** A store order was created via the storefront checkout. */
+/** A store order was created — storefront checkout or native WhatsApp catalog. */
 export interface OrderCreatedData extends WebhookContactRefs {
   order_uuid: string
   ref: string
   status: string
+  source: StoreOrderSource
   customer_name: string
   customer_phone: string
   contact_uuid: string | null
