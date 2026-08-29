@@ -5,6 +5,7 @@ import type {
   Contact,
   ContactWrite,
   Conversation,
+  ConversationDetail,
   Envelope,
   ExecuteFlowInput,
   Flow,
@@ -14,6 +15,12 @@ import type {
   OperationStatus,
   Paginated,
   SendMessageInput,
+  StoreBatchResult,
+  StoreOrder,
+  StoreOrderStatus,
+  StoreProduct,
+  StoreProductWrite,
+  StoreSummary,
   Template,
 } from './types.js'
 
@@ -141,11 +148,20 @@ export class WazapiClient {
     return this.request('GET', this.withQuery('/conversations', params))
   }
 
-  async getConversation(uuid: string): Promise<Conversation> {
-    const body = await this.request<Envelope<Conversation>>(
-      'GET',
-      `/conversations/${encode(uuid)}`
-    )
+  /**
+   * Everything about the chat in one call: contact (with tags), assigned agent
+   * and group, channel, status and counters. Pass `options.include = 'messages'`
+   * to embed the first page of messages — audio messages carry their
+   * `transcript` as a first-level field.
+   */
+  async getConversation(
+    uuid: string,
+    options: { include?: 'messages' } = {}
+  ): Promise<ConversationDetail> {
+    const path = options.include
+      ? `/conversations/${encode(uuid)}?include=${options.include}`
+      : `/conversations/${encode(uuid)}`
+    const body = await this.request<Envelope<ConversationDetail>>('GET', path)
     return body.data
   }
 
@@ -186,6 +202,79 @@ export class WazapiClient {
       { channel_uuid: channelUuid, recipient: { phone }, type: 'template', content: template },
       idempotencyKey
     )
+  }
+
+  // ---- Store ------------------------------------------------------------
+
+  /** Storefront status, public URL and product/order counts. Requires `store:read`. */
+  async getStore(): Promise<StoreSummary> {
+    const body = await this.request<Envelope<StoreSummary>>('GET', '/store')
+    return body.data
+  }
+
+  listStoreProducts(params: ListParams = {}): Promise<Paginated<StoreProduct>> {
+    return this.request('GET', this.withQuery('/store/products', params))
+  }
+
+  async getStoreProduct(uuid: string): Promise<StoreProduct> {
+    const body = await this.request<Envelope<StoreProduct>>(
+      'GET',
+      `/store/products/${encode(uuid)}`
+    )
+    return body.data
+  }
+
+  async createStoreProduct(input: StoreProductWrite): Promise<StoreProduct> {
+    const body = await this.request<Envelope<StoreProduct>>('POST', '/store/products', {
+      body: input,
+    })
+    return body.data
+  }
+
+  async updateStoreProduct(uuid: string, input: StoreProductWrite): Promise<StoreProduct> {
+    const body = await this.request<Envelope<StoreProduct>>(
+      'PATCH',
+      `/store/products/${encode(uuid)}`,
+      { body: input }
+    )
+    return body.data
+  }
+
+  /**
+   * Creates or updates up to 100 products in one call with a per-item result —
+   * one invalid product does not fail the batch. Items whose `import_handle`
+   * matches an existing product UPDATE it instead of creating a duplicate: this
+   * is the migration path for an external catalog (Shopify, an ERP).
+   */
+  batchStoreProducts(products: StoreProductWrite[]): Promise<StoreBatchResult> {
+    return this.request('POST', '/store/products/batch', { body: { products } })
+  }
+
+  listStoreOrders(params: ListParams = {}): Promise<Paginated<StoreOrder>> {
+    return this.request('GET', this.withQuery('/store/orders', params))
+  }
+
+  async getStoreOrder(uuid: string): Promise<StoreOrder> {
+    const body = await this.request<Envelope<StoreOrder>>('GET', `/store/orders/${encode(uuid)}`)
+    return body.data
+  }
+
+  /**
+   * Transitions an order through its state machine (novo→confirmado→pago→entregue,
+   * cancel from any non-terminal state). An invalid transition throws a
+   * `WazapiError` with code `invalid_status_transition` (422). Cancelling
+   * restores tracked stock.
+   */
+  async updateStoreOrderStatus(
+    uuid: string,
+    status: Exclude<StoreOrderStatus, 'novo'>
+  ): Promise<StoreOrder> {
+    const body = await this.request<Envelope<StoreOrder>>(
+      'POST',
+      `/store/orders/${encode(uuid)}/status`,
+      { body: { status } }
+    )
+    return body.data
   }
 
   // ---- Operations -------------------------------------------------------
