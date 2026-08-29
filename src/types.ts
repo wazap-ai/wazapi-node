@@ -322,7 +322,7 @@ export interface StoreOrder {
   provider_order_id: string | null
   /**
    * Allowlisted attribution subset stamped at creation (utm_*, click IDs incl.
-   * ctwa_clid, ad_*/referral_*). Conversation values win over contact values
+   * ctwa_clid, ad referral fields). Conversation values win over contact values
    * (last touch over first touch). Null when the order has no attributable source.
    */
   tracking: Record<string, unknown> | null
