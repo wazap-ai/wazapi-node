@@ -12,6 +12,8 @@ export type PublicApiScope =
   | 'flows:read'
   | 'flows:execute'
   | 'operations:read'
+  | 'store:read'
+  | 'store:write'
 
 export interface PaginationMeta {
   next_cursor: string | null
@@ -119,12 +121,33 @@ export interface Conversation {
   updated_at: string | null
 }
 
+/**
+ * `GET /conversations/{uuid}` — everything about the chat in one call: contact
+ * (with tags), assigned agent and group, channel, status and counters. Pass
+ * `include: 'messages'` to embed the first page of messages.
+ */
+export interface ConversationDetail extends Conversation {
+  channel_provider: string | null
+  assigned_agent: { uuid: string; name: string | null } | null
+  assigned_group: { uuid: string; name: string } | null
+  message_count: number
+  /** Present only when requested with `include: 'messages'`. */
+  messages?: Message[]
+}
+
 export interface Message {
   uuid: string
   direction: 'inbound' | 'outbound'
   type: string
   status: string
   content: Record<string, unknown>
+  /**
+   * Transcription of an inbound audio message, when available. Populated
+   * asynchronously after transcription; also delivered via the
+   * `message.transcribed` webhook. `null` for non-audio messages and audios
+   * not yet transcribed.
+   */
+  transcript: string | null
   provider_message_id: string | null
   created_at: string | null
   updated_at: string | null
@@ -205,6 +228,130 @@ export interface AcceptedResult {
   replayed: boolean
 }
 
+/* ── Store ──────────────────────────────────────────────────────────────── */
+
+export interface StoreSummary {
+  enabled: boolean
+  mode: 'links_only' | 'store_only' | 'both' | null
+  slug: string | null
+  /** Public storefront path (relative, e.g. `/loja/minha-loja`). */
+  url: string | null
+  product_count: number
+  order_count: number
+}
+
+export interface StoreProductVariant {
+  uuid: string
+  label: string
+  price_cents: number | null
+  stock: number | null
+  active: boolean
+  position: number
+}
+
+export interface StoreProduct {
+  uuid: string
+  name: string
+  description: string | null
+  category_uuid: string | null
+  price_cents: number
+  promo_price_cents: number | null
+  effective_price_cents: number
+  images: string[]
+  highlighted: boolean
+  track_stock: boolean
+  stock: number | null
+  active: boolean
+  position: number
+  /**
+   * External catalog handle (e.g. Shopify Handle). Products sharing the same
+   * handle are updated on re-import/batch instead of duplicated.
+   */
+  import_handle: string | null
+  variants: StoreProductVariant[]
+  created_at: string | null
+  updated_at: string | null
+}
+
+export interface StoreProductWrite {
+  name: string
+  description?: string | null
+  category_uuid?: string | null
+  price_cents: number
+  promo_price_cents?: number | null
+  highlighted?: boolean
+  track_stock?: boolean
+  stock?: number | null
+  active?: boolean
+  position?: number
+  import_handle?: string | null
+  /**
+   * On update the variant list replaces the existing one: variants whose `uuid`
+   * is present are kept/updated, the rest are deleted.
+   */
+  variants?: {
+    uuid?: string | null
+    label: string
+    price_cents?: number | null
+    stock?: number | null
+    active?: boolean
+  }[]
+}
+
+export type StoreOrderStatus = 'novo' | 'confirmado' | 'pago' | 'entregue' | 'cancelado'
+
+export interface StoreOrderItem {
+  product_uuid: string
+  name: string
+  variant_label: string | null
+  quantity: number
+  unit_price_cents: number
+  total_cents: number
+}
+
+export type StoreOrderSource = 'storefront' | 'whatsapp_catalog'
+
+export interface StoreOrder {
+  uuid: string
+  /** Short human reference (first 8 chars of the uuid) shown to the customer. */
+  ref: string
+  status: StoreOrderStatus
+  /** Where the order was placed: storefront checkout or the native WhatsApp catalog. */
+  source: StoreOrderSource
+  /** Provider-side id for orders that originated outside the storefront (WhatsApp catalog order message id). */
+  provider_order_id: string | null
+  /**
+   * Allowlisted attribution subset stamped at creation (utm_*, click IDs incl.
+   * ctwa_clid, ad referral fields). Conversation values win over contact values
+   * (last touch over first touch). Null when the order has no attributable source.
+   */
+  tracking: Record<string, unknown> | null
+  customer_name: string
+  customer_phone: string
+  contact_uuid: string | null
+  /** Inbox conversation opened by the order automation, when available. */
+  conversation_uuid: string | null
+  items: StoreOrderItem[]
+  subtotal_cents: number
+  shipping_name: string | null
+  shipping_cents: number
+  total_cents: number
+  /** `catalog` = order from the native WhatsApp catalog (payment arranged in chat). */
+  payment_method: 'pix' | 'link' | 'on_delivery' | 'catalog'
+  notes: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+export type StoreBatchResultItem =
+  | { index: number; status: 'created' | 'updated'; uuid: string }
+  | { index: number; status: 'error'; error: { code: string; message: string } }
+
+export interface StoreBatchResult {
+  data: StoreBatchResultItem[]
+  meta: { created: number; updated: number; failed: number }
+}
+
 /* ── Webhooks ───────────────────────────────────────────────────────────── */
 
 export type WebhookEventType =
@@ -213,6 +360,7 @@ export type WebhookEventType =
   | 'conversation.created'
   | 'conversation.updated'
   | 'flow.execution.updated'
+  | 'order.created'
   | 'webhook.test'
 
 /**
@@ -275,6 +423,25 @@ export interface FlowExecutionUpdatedData {
   error: { code: string; message: string | null } | null
 }
 
+/** A store order was created — storefront checkout or native WhatsApp catalog. */
+export interface OrderCreatedData extends WebhookContactRefs {
+  order_uuid: string
+  ref: string
+  status: string
+  source: StoreOrderSource
+  customer_name: string
+  customer_phone: string
+  contact_uuid: string | null
+  items: StoreOrderItem[]
+  subtotal_cents: number
+  shipping_name: string | null
+  shipping_cents: number
+  total_cents: number
+  payment_method: string
+  notes: string | null
+  created_at: string | null
+}
+
 export interface WebhookTestData {
   integration_uuid: string
   message: string
@@ -306,6 +473,7 @@ export type FlowExecutionUpdatedEvent = WebhookEnvelope<
   'flow.execution.updated',
   FlowExecutionUpdatedData
 >
+export type OrderCreatedEvent = WebhookEnvelope<'order.created', OrderCreatedData>
 export type WebhookTestEvent = WebhookEnvelope<'webhook.test', WebhookTestData>
 
 /** Discriminated on `type` — narrow it and `data` narrows with it. */
@@ -315,4 +483,5 @@ export type WazapiWebhookEvent =
   | ConversationCreatedEvent
   | ConversationUpdatedEvent
   | FlowExecutionUpdatedEvent
+  | OrderCreatedEvent
   | WebhookTestEvent
