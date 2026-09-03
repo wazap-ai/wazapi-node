@@ -193,22 +193,29 @@ export interface Recipient {
   external_id?: string
 }
 
+/**
+ * `channel_uuid` is optional since API 1.1: when the company has a single
+ * WhatsApp channel (or a single connected one) the API resolves it from the
+ * token. With several connected channels the request fails synchronously with
+ * `422 channel_required` — discover the value with `listChannels()`.
+ */
 export type SendMessageInput =
   | {
-      channel_uuid: string
+      channel_uuid?: string
       recipient: Recipient
       type: 'text'
       content: { text: string }
     }
   | {
-      channel_uuid: string
+      channel_uuid?: string
       recipient: Recipient
       type: 'template'
       content: { name: string; language?: string; parameters?: string[] }
     }
 
 export interface ExecuteFlowInput {
-  channel_uuid: string
+  /** Optional with a single channel — see `SendMessageInput`. */
+  channel_uuid?: string
   recipient: Recipient
   variables?: Record<string, unknown>
 }

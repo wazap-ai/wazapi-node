@@ -73,6 +73,22 @@ test('honors a caller-provided idempotency key and detects replays', async () =>
   assert.equal(result.replayed, true)
 })
 
+test('omits channel_uuid when null so the API resolves the channel', async () => {
+  const bodies: Array<Record<string, unknown>> = []
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((_url, init) => {
+      bodies.push(JSON.parse(String(init.body)))
+      return json({ data: { uuid: 'op-1', type: 'message.send', status: 'queued' } }, { status: 202 })
+    }),
+  })
+  await client.sendText(null, '+5511999998888', 'hi')
+  await client.sendTemplate('chan', '+5511999998888', { name: 'order_confirmed' })
+  assert.equal('channel_uuid' in bodies[0], false)
+  assert.equal(bodies[1].channel_uuid, 'chan')
+})
+
 test('throws a typed WazapiError on the stable error envelope', async () => {
   const client = new WazapiClient({
     token: 'waz_api_test',

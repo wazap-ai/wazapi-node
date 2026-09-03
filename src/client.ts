@@ -178,28 +178,35 @@ export class WazapiClient {
     return this.accept('POST', '/messages', input, idempotencyKey)
   }
 
-  /** Convenience wrapper for a plain text send. */
+  /**
+   * Convenience wrapper for a plain text send. Pass `null` as `channelUuid` to
+   * let the API pick the company's single WhatsApp channel.
+   */
   sendText(
-    channelUuid: string,
+    channelUuid: string | null,
     phone: string,
     text: string,
     idempotencyKey?: string
   ): Promise<AcceptedResult> {
     return this.sendMessage(
-      { channel_uuid: channelUuid, recipient: { phone }, type: 'text', content: { text } },
+      { ...channelField(channelUuid), recipient: { phone }, type: 'text', content: { text } },
       idempotencyKey
     )
   }
 
-  /** Convenience wrapper for a template send with positional body parameters. */
+  /**
+   * Convenience wrapper for a template send with positional body parameters.
+   * Pass `null` as `channelUuid` to let the API pick the company's single
+   * WhatsApp channel.
+   */
   sendTemplate(
-    channelUuid: string,
+    channelUuid: string | null,
     phone: string,
     template: { name: string; language?: string; parameters?: string[] },
     idempotencyKey?: string
   ): Promise<AcceptedResult> {
     return this.sendMessage(
-      { channel_uuid: channelUuid, recipient: { phone }, type: 'template', content: template },
+      { ...channelField(channelUuid), recipient: { phone }, type: 'template', content: template },
       idempotencyKey
     )
   }
@@ -414,4 +421,9 @@ function safeJson(text: string): unknown {
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+/** Omit the key entirely when null: the API treats an absent field as "resolve it". */
+function channelField(channelUuid: string | null): { channel_uuid?: string } {
+  return channelUuid ? { channel_uuid: channelUuid } : {}
 }
