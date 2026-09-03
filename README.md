@@ -22,19 +22,34 @@ import { WazapiClient } from '@wazapi/sdk'
 
 const wazapi = new WazapiClient({ token: process.env.WAZAPI_API_TOKEN! })
 
-// Discover a WhatsApp channel
-const channels = await wazapi.listChannels()
-const channel = channels.find((c) => c.capabilities.send_template)
-if (!channel) throw new Error('No channel able to send templates')
-
-// Fire a template and wait for the result
-const { operation } = await wazapi.sendTemplate(channel.uuid, '+5511999998888', {
+// Fire a template and wait for the result. `null` = let the API pick the
+// company's WhatsApp channel (it has one number per company).
+const { operation } = await wazapi.sendTemplate(null, '+5511999998888', {
   name: 'order_confirmed',
   parameters: ['Maria', '1847'],
 })
 const final = await wazapi.waitForOperation(operation.uuid)
 console.log(final.status) // 'succeeded' | 'failed'
 ```
+
+### Channels
+
+The token identifies the company; the channel is the WhatsApp number a send
+goes out from. Since API 1.1 `channel_uuid` is optional: with a single channel
+(or a single connected one) the API resolves it. With several connected
+channels a send without it fails synchronously with `422 channel_required` —
+discover the value and pass it explicitly:
+
+```ts
+const channels = await wazapi.listChannels()
+const channel = channels.find((c) => c.capabilities.send_template)
+if (!channel) throw new Error('No channel able to send templates')
+
+await wazapi.sendTemplate(channel.uuid, '+5511999998888', { name: 'order_confirmed' })
+```
+
+The same `uuid` is shown with a copy button in the dashboard under
+**Settings > API**.
 
 ## Sending a template (recommended flow)
 
@@ -107,6 +122,8 @@ operation is created):
 | `template_language_unavailable`     | No approved version in the requested `language`.     |
 | `template_parameter_count_mismatch` | `parameters.length` ≠ `body_parameter_count`.        |
 | `template_format_unsupported`       | Needs media/variable header, named params, buttons.  |
+| `channel_required`                  | `channel_uuid` omitted and the company has several connected channels. |
+| `channel_not_found`                 | Unknown `channel_uuid`, or no WhatsApp channel connected.              |
 
 Compliance gates on template sends (rejected synchronously with 403/422, and
 re-checked by the worker — the same codes can appear as `error.code` on the
