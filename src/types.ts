@@ -400,12 +400,26 @@ export interface MessageReceivedData extends WebhookContactRefs {
  * `provider_message_id` comes from the provider status callback; `operation_uuid`
  * and `conversation_uuid` are present when the message was sent through the API.
  */
+/**
+ * Delivery failure as reported by the messaging provider (Meta error codes for
+ * WhatsApp — 131042 payment issue, 131050 recipient opted out, 131047
+ * re-engagement required...). Every field can be null when the provider omits it.
+ */
+export interface MessageDeliveryError {
+  code: number | null
+  title: string | null
+  message: string | null
+  details: string | null
+}
+
 export interface MessageStatusUpdatedData {
   message_uuid: string
   status: string
   provider_message_id?: string | null
   operation_uuid?: string
   conversation_uuid?: string
+  /** Present only when `status` is `failed` (API 1.2); null when the provider gave no reason. */
+  error?: MessageDeliveryError | null
   tracking?: WebhookTracking
 }
 
