@@ -171,7 +171,10 @@ function handle(event: WazapiWebhookEvent) {
     case 'message.received':
       return reply(event.data.contact_uuid, event.data.content)
     case 'message.status.updated':
-      return markDelivered(event.data.message_uuid, event.data.status)
+      // `error` carries the provider's reason on `failed` (API 1.2), e.g. Meta 131042
+      return event.data.status === 'failed'
+        ? markFailed(event.data.message_uuid, event.data.error?.code ?? null)
+        : markDelivered(event.data.message_uuid, event.data.status)
     case 'flow.execution.updated':
       return event.data.error ? alert(event.data.error.code) : done()
   }
