@@ -176,6 +176,12 @@ function handle(event: WazapiWebhookEvent) {
       return event.data.status === 'failed'
         ? markFailed(event.data.message_uuid, event.data.error?.code ?? null)
         : markDelivered(event.data.message_uuid, event.data.status)
+    case 'message.updated':
+      // Opt-in (API 1.5): only the edited field, with its new value
+      return updateText(event.data.message_uuid, event.data.text ?? event.data.caption)
+    case 'message.deleted':
+      // Opt-in (API 1.5): never carries content — drop your copy
+      return forget(event.data.message_uuid)
     case 'flow.execution.updated':
       return event.data.error ? alert(event.data.error.code) : done()
   }
