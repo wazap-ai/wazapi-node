@@ -170,12 +170,26 @@ export type SendComplianceErrorCode =
   | 'marketing_sends_disabled'
   | 'template_sends_disabled'
   | 'recipient_opted_out'
+  | 'recipient_marketing_limit_reached'
   | 'duplicate_template_send'
   | 'template_frequency_cap_exceeded'
   | 'company_daily_marketing_cap_exceeded'
   | 'channel_marketing_paused'
   | 'template_quality_blocked'
   | 'send_pacing_timeout'
+
+/**
+ * `result` of a succeeded `message.send` operation. `text` (API 1.3) is the
+ * message as it reached the contact, with the template body interpolated —
+ * `null` when there is no text body.
+ */
+export interface MessageSendResult {
+  status: string
+  message_uuid: string
+  conversation_uuid: string
+  contact_uuid: string
+  text: string | null
+}
 
 export interface Operation {
   uuid: string

@@ -155,3 +155,13 @@ test('waitForOperation polls until terminal', async () => {
   assert.equal(operation.status, 'succeeded')
   assert.equal(call, 3)
 })
+
+test('treats the per-user marketing limit as a compliance block (API 1.4)', () => {
+  const err = new WazapiError({
+    status: 422,
+    code: 'recipient_marketing_limit_reached',
+    message: 'Recipient reached the Meta per-user marketing limit.',
+    details: { retry_after_seconds: 86_000 },
+  })
+  assert.equal(err.isComplianceBlocked, true)
+})
