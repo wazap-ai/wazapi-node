@@ -45,6 +45,7 @@ export class WazapiError extends Error {
       'marketing_sends_disabled',
       'template_sends_disabled',
       'recipient_opted_out',
+      'recipient_marketing_limit_reached',
       'duplicate_template_send',
       'template_frequency_cap_exceeded',
       'company_daily_marketing_cap_exceeded',

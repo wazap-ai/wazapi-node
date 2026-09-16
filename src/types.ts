@@ -148,6 +148,14 @@ export interface Message {
    * not yet transcribed.
    */
   transcript: string | null
+  /**
+   * When the contact (or the business, from the WhatsApp Business app) deleted
+   * the message. `content` is then empty apart from `deleted` (API 1.5).
+   */
+  deleted_at: string | null
+  deleted_by: MessageDeletedBy | null
+  /** When the text or caption was last edited; `content` holds the current value (API 1.5). */
+  edited_at: string | null
   provider_message_id: string | null
   created_at: string | null
   updated_at: string | null
@@ -170,12 +178,26 @@ export type SendComplianceErrorCode =
   | 'marketing_sends_disabled'
   | 'template_sends_disabled'
   | 'recipient_opted_out'
+  | 'recipient_marketing_limit_reached'
   | 'duplicate_template_send'
   | 'template_frequency_cap_exceeded'
   | 'company_daily_marketing_cap_exceeded'
   | 'channel_marketing_paused'
   | 'template_quality_blocked'
   | 'send_pacing_timeout'
+
+/**
+ * `result` of a succeeded `message.send` operation. `text` (API 1.3) is the
+ * message as it reached the contact, with the template body interpolated —
+ * `null` when there is no text body.
+ */
+export interface MessageSendResult {
+  status: string
+  message_uuid: string
+  conversation_uuid: string
+  contact_uuid: string
+  text: string | null
+}
 
 export interface Operation {
   uuid: string
@@ -364,6 +386,9 @@ export interface StoreBatchResult {
 export type WebhookEventType =
   | 'message.received'
   | 'message.status.updated'
+  | 'message.transcribed'
+  | 'message.updated'
+  | 'message.deleted'
   | 'conversation.created'
   | 'conversation.updated'
   | 'flow.execution.updated'
@@ -421,6 +446,50 @@ export interface MessageStatusUpdatedData {
   /** Present only when `status` is `failed` (API 1.2); null when the provider gave no reason. */
   error?: MessageDeliveryError | null
   tracking?: WebhookTracking
+}
+
+/** An inbound audio message was transcribed (company with an OpenAI key and transcription on). */
+export interface MessageTranscribedData {
+  message_uuid: string
+  conversation_uuid: string
+  transcript: string
+  language: string | null
+  tracking?: WebhookTracking
+}
+
+/** `business_app` = deleted from the WhatsApp Business app on the business phone (coexistence). */
+export type MessageDeletedBy = 'contact' | 'business_app'
+
+interface MessageMutationRefs extends WebhookContactRefs {
+  message_uuid: string
+  conversation_uuid: string
+  contact_uuid: string | null
+  channel_uuid: string
+  /** `outbound` when the business edited or deleted from the WhatsApp Business app. */
+  direction: 'inbound' | 'outbound'
+  /** Original message type, kept after deletion. */
+  type: string
+}
+
+/**
+ * A message was edited after it was sent (API 1.5, opt-in). Only the edited
+ * field comes, with its new value — the previous one went out in
+ * `message.received`. Sources: WhatsApp `edit` (coexistence) and Messenger.
+ */
+export interface MessageUpdatedData extends MessageMutationRefs {
+  text?: string
+  caption?: string
+  edited_at: string
+}
+
+/**
+ * A message was deleted after it was sent (API 1.5, opt-in). Never carries
+ * content. An Instagram message with several attachments emits one event per
+ * `message_uuid`. Sources: WhatsApp `revoke` (coexistence) and Instagram.
+ */
+export interface MessageDeletedData extends MessageMutationRefs {
+  deleted_at: string
+  deleted_by: MessageDeletedBy
 }
 
 export interface ConversationCreatedData extends WebhookContactRefs {
@@ -482,6 +551,12 @@ export type MessageStatusUpdatedEvent = WebhookEnvelope<
   'message.status.updated',
   MessageStatusUpdatedData
 >
+export type MessageTranscribedEvent = WebhookEnvelope<
+  'message.transcribed',
+  MessageTranscribedData
+>
+export type MessageUpdatedEvent = WebhookEnvelope<'message.updated', MessageUpdatedData>
+export type MessageDeletedEvent = WebhookEnvelope<'message.deleted', MessageDeletedData>
 export type ConversationCreatedEvent = WebhookEnvelope<
   'conversation.created',
   ConversationCreatedData
@@ -501,6 +576,9 @@ export type WebhookTestEvent = WebhookEnvelope<'webhook.test', WebhookTestData>
 export type WazapiWebhookEvent =
   | MessageReceivedEvent
   | MessageStatusUpdatedEvent
+  | MessageTranscribedEvent
+  | MessageUpdatedEvent
+  | MessageDeletedEvent
   | ConversationCreatedEvent
   | ConversationUpdatedEvent
   | FlowExecutionUpdatedEvent
