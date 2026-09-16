@@ -133,8 +133,9 @@ polled operation):
 | --------------------------------------- | ------------------------------------------------------------------------ |
 | `marketing_sends_disabled`              | MARKETING sending is off for the company (an owner enables it in the dashboard) or platform-wide. |
 | `recipient_opted_out`                   | The recipient opted out (reply keyword, native WhatsApp control, or manual suppression). Filter on `contact.marketing_opted_out`. |
+| `recipient_marketing_limit_reached`     | API 1.4: a previous MARKETING send to this phone failed with Meta error 131049 (per-user marketing limit, counted across all businesses) in the last 24h. Meta asks for 24h before retrying; see `details.retry_after_seconds`. UTILITY and AUTHENTICATION are not affected. |
 | `duplicate_template_send`               | Same template already sent to this phone in the last 24h.                |
-| `template_frequency_cap_exceeded`       | Per-contact MARKETING cap (1/24h, 3/7 days).                             |
+| `template_frequency_cap_exceeded`       | Per-contact MARKETING cap (1/24h, 3/7 days). Sends made while the recipient's 24h customer service window is open do not count (API 1.4). |
 | `company_daily_marketing_cap_exceeded`  | Company-wide daily MARKETING cap.                                        |
 | `channel_marketing_paused`              | Meta flagged the number's quality; MARKETING is paused temporarily.      |
 | `template_quality_blocked`              | This specific template dropped to RED quality on Meta.                   |
@@ -175,6 +176,12 @@ function handle(event: WazapiWebhookEvent) {
       return event.data.status === 'failed'
         ? markFailed(event.data.message_uuid, event.data.error?.code ?? null)
         : markDelivered(event.data.message_uuid, event.data.status)
+    case 'message.updated':
+      // Opt-in (API 1.5): only the edited field, with its new value
+      return updateText(event.data.message_uuid, event.data.text ?? event.data.caption)
+    case 'message.deleted':
+      // Opt-in (API 1.5): never carries content — drop your copy
+      return forget(event.data.message_uuid)
     case 'flow.execution.updated':
       return event.data.error ? alert(event.data.error.code) : done()
   }
