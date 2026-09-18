@@ -165,3 +165,23 @@ test('treats the per-user marketing limit as a compliance block (API 1.4)', () =
   })
   assert.equal(err.isComplianceBlocked, true)
 })
+
+test('deletes a store product and lists categories (API 1.6)', async () => {
+  const calls: string[] = []
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push(`${init.method} ${url}`)
+      if (init.method === 'DELETE') return new Response(null, { status: 204 })
+      return json({ data: [{ uuid: 'c1', name: 'Canecas', position: 0 }] })
+    }),
+  })
+  assert.equal(await client.deleteStoreProduct('p1'), undefined)
+  const categories = await client.listStoreCategories()
+  assert.equal(categories[0].name, 'Canecas')
+  assert.deepEqual(calls, [
+    'DELETE https://example.test/api/v1/store/products/p1',
+    'GET https://example.test/api/v1/store/categories',
+  ])
+})

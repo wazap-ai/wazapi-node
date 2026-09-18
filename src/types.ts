@@ -263,7 +263,7 @@ export interface StoreSummary {
   enabled: boolean
   mode: 'links_only' | 'store_only' | 'both' | null
   slug: string | null
-  /** Public storefront path (relative, e.g. `/loja/minha-loja`). */
+  /** Absolute public storefront URL (relative path before API 1.6). */
   url: string | null
   product_count: number
   order_count: number
@@ -315,8 +315,17 @@ export interface StoreProductWrite {
   position?: number
   import_handle?: string | null
   /**
-   * On update the variant list replaces the existing one: variants whose `uuid`
-   * is present are kept/updated, the rest are deleted.
+   * Up to 4 public http(s) URLs of JPEG, PNG or WebP images (5 MB each). Wazapi
+   * downloads and re-hosts them; the first one is the cover. Omit to keep the
+   * current images, `[]` removes them all. A URL that cannot be downloaded as a
+   * public image fails the request with `product_image_invalid`. On the batch
+   * endpoint the download runs in the background. (API 1.6)
+   */
+  image_urls?: string[]
+  /**
+   * When sent on update, the variant list replaces the existing one: variants
+   * whose `uuid` is present are kept/updated, the rest are deleted. Omit to
+   * leave variants untouched.
    */
   variants?: {
     uuid?: string | null
@@ -325,6 +334,18 @@ export interface StoreProductWrite {
     stock?: number | null
     active?: boolean
   }[]
+}
+
+/**
+ * Partial update (API 1.6): an omitted field keeps its current value, `null`
+ * clears a nullable one.
+ */
+export type StoreProductPatch = Partial<StoreProductWrite>
+
+export interface StoreCategory {
+  uuid: string
+  name: string
+  position: number
 }
 
 export type StoreOrderStatus = 'novo' | 'confirmado' | 'pago' | 'entregue' | 'cancelado'
@@ -373,7 +394,16 @@ export interface StoreOrder {
 }
 
 export type StoreBatchResultItem =
-  | { index: number; status: 'created' | 'updated'; uuid: string }
+  | {
+      index: number
+      status: 'created' | 'updated'
+      uuid: string
+      /**
+       * Present when the item carried `image_urls`: `queued` = downloading in the
+       * background; `not_queued` = product saved, resend the item for the images.
+       */
+      images?: 'queued' | 'not_queued'
+    }
   | { index: number; status: 'error'; error: { code: string; message: string } }
 
 export interface StoreBatchResult {
