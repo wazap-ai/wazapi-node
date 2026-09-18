@@ -16,9 +16,11 @@ import type {
   Paginated,
   SendMessageInput,
   StoreBatchResult,
+  StoreCategory,
   StoreOrder,
   StoreOrderStatus,
   StoreProduct,
+  StoreProductPatch,
   StoreProductWrite,
   StoreSummary,
   Template,
@@ -238,12 +240,30 @@ export class WazapiClient {
     return body.data
   }
 
-  async updateStoreProduct(uuid: string, input: StoreProductWrite): Promise<StoreProduct> {
+  /**
+   * Partial update since API 1.6: omitted fields keep their current value
+   * (before 1.6 they were reset to their defaults).
+   */
+  async updateStoreProduct(uuid: string, input: StoreProductPatch): Promise<StoreProduct> {
     const body = await this.request<Envelope<StoreProduct>>(
       'PATCH',
       `/store/products/${encode(uuid)}`,
       { body: input }
     )
+    return body.data
+  }
+
+  /**
+   * Permanently deletes the product, its variants and hosted images. Past orders
+   * keep a snapshot of their items. Requires `store:write`. (API 1.6)
+   */
+  async deleteStoreProduct(uuid: string): Promise<void> {
+    await this.request<null>('DELETE', `/store/products/${encode(uuid)}`)
+  }
+
+  /** Store categories, to discover the `category_uuid` of a product. (API 1.6) */
+  async listStoreCategories(): Promise<StoreCategory[]> {
+    const body = await this.request<Envelope<StoreCategory[]>>('GET', '/store/categories')
     return body.data
   }
 
