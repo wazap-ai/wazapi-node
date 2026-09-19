@@ -2,7 +2,8 @@
  * Error thrown for any non-2xx response from the Wazapi API. Carries the stable
  * error envelope (`code`, `message`, `request_id`) so callers can branch on
  * `error.code` — e.g. `template_parameter_count_mismatch` — and quote `request_id`
- * to support.
+ * to support. `message` is always English since API 1.7 and its wording may
+ * change without a version bump: never branch on it.
  */
 export class WazapiError extends Error {
   readonly status: number

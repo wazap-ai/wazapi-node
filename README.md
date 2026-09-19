@@ -113,6 +113,9 @@ try {
 }
 ```
 
+Error messages are always in English (API 1.7) and are meant for logs and
+humans; branch on `err.code`, which is stable.
+
 Common template send error codes (all rejected synchronously, before an
 operation is created):
 
