@@ -194,18 +194,14 @@ function handle(event: WazapiWebhookEvent) {
 Verify the signature over the **raw** body, before parsing:
 
 ```ts
-import { createHmac, timingSafeEqual } from 'node:crypto'
+import { verifyWebhookSignature } from '@wazapi/sdk'
 
-function verify(rawBody: string, headers: Record<string, string>, secret: string) {
-  const expected = createHmac('sha256', secret)
-    .update(`${headers['wazapi-timestamp']}.${rawBody}`)
-    .digest('hex')
-  const received = (headers['wazapi-signature'] ?? '').replace(/^v1=/, '')
-  const a = Buffer.from(expected)
-  const b = Buffer.from(received)
-  return a.length === b.length && timingSafeEqual(a, b)
+if (!verifyWebhookSignature(rawBody, headers, webhookSecret)) {
+  throw new Error('Invalid webhook signature or timestamp')
 }
 ```
+
+API 1.8 sends comma-separated `v1` signatures during the 24-hour secret rotation window. The verifier accepts either secret and rejects timestamps more than five minutes old or in the future. Upgrade the verifier before rotating secrets.
 
 Delivery is at-least-once — deduplicate on `event.id` (also sent as the
 `Wazapi-Event-Id` header). Wazapi treats only `2xx` as success and retries after
