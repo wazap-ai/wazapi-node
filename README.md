@@ -95,7 +95,15 @@ await wazapi.sendTemplate(null, '+5511999998888', {
 })
 ```
 
-Media is sent by public `link`; Meta downloads it on delivery. A missing or
+Media is sent by public `link` (Meta downloads it on delivery) or, since API
+1.10, by `media_uuid` — the ID of a file in the dashboard's Files library:
+`header: { type: 'image', media_uuid: '5f0c2b1e-…' }`. An unknown ID answers
+`media_not_found`; a file of the wrong type or size, `media_invalid`.
+
+Quick reply buttons take an optional `payload`
+(`{ index: 2, payload: 'confirm_1847' }`). When the recipient taps it, the
+`message.received` webhook arrives with `type: 'interactive'` and
+`content.reply.id` equal to your payload. A missing or
 extra header or button answers `template_component_mismatch`. Templates whose
 body uses named `{{name}}` placeholders are not sendable yet
 (`template_format_unsupported`).

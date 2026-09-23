@@ -208,3 +208,21 @@ test('sends template components as given (API 1.9)', async () => {
   assert.deepEqual(sent.content, { name: 'order_shipped', components })
   assert.equal(sent.type, 'template')
 })
+
+test('sends library media and quick reply payload as given (API 1.10)', async () => {
+  let sent: any
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((_url, init) => {
+      sent = JSON.parse(String(init.body))
+      return json({ data: { uuid: 'op-1', type: 'message.send', status: 'queued' } }, { status: 202 })
+    }),
+  })
+  const components = {
+    header: { type: 'document' as const, media_uuid: '5f0c2b1e-8d7a-4c3e-9b6f-2a1d4e7c9f30' },
+    buttons: [{ index: 0, payload: 'confirm_1847' }],
+  }
+  await client.sendTemplate(null, '+5511999998888', { name: 'invoice', components })
+  assert.deepEqual(sent.content.components, components)
+})

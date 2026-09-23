@@ -111,15 +111,24 @@ export interface TemplateVariables {
 }
 
 /** Header value for a template send; `type` is `variables.header.format` lowercased. */
+/**
+ * Media comes from a public `link` or, since API 1.10, from a file in the
+ * company's media library (`media_uuid`, shown under Files > file details).
+ * Send exactly one of them.
+ */
+export type TemplateSendMedia = { link: string; media_uuid?: never } | { media_uuid: string; link?: never }
+
 export type TemplateSendHeader =
   | { type: 'text'; text: string }
-  | { type: 'image' | 'video'; link: string }
-  | { type: 'document'; link: string; filename?: string }
+  | ({ type: 'image' | 'video' } & TemplateSendMedia)
+  | ({ type: 'document'; filename?: string } & TemplateSendMedia)
   | { type: 'location'; latitude: number; longitude: number; name?: string; address?: string }
 
 export type TemplateSendButton =
   | { index: number; url_suffix: string }
   | { index: number; coupon_code: string }
+  /** API 1.10: QUICK_REPLY, optional. Comes back as `content.reply.id` on `message.received`. */
+  | { index: number; payload: string }
 
 /**
  * API 1.9: values a template needs at send time. A missing or extra header or
