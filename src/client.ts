@@ -112,6 +112,24 @@ export class WazapiClient {
     return body.data
   }
 
+  /** Blocks the contact in both directions; needs the `contacts:block` scope (API 1.13). */
+  async blockContact(uuid: string): Promise<Contact> {
+    const body = await this.request<Envelope<Contact>>(
+      'POST',
+      `/contacts/${encode(uuid)}/block`
+    )
+    return body.data
+  }
+
+  /** Removes the block; `meta_blocked` still true means Meta refused — retry (API 1.13). */
+  async unblockContact(uuid: string): Promise<Contact> {
+    const body = await this.request<Envelope<Contact>>(
+      'DELETE',
+      `/contacts/${encode(uuid)}/block`
+    )
+    return body.data
+  }
+
   async upsertContactByExternalId(
     externalId: string,
     input: ContactWrite & { phone: string }

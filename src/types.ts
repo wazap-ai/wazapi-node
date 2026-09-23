@@ -59,6 +59,19 @@ export interface Contact {
    */
   marketing_opted_out: boolean
   marketing_opt_out_at: string | null
+  /**
+   * When the company blocked this contact, or `null` (API 1.13). A blocked
+   * contact's messages and calls are dropped, and every send to them fails
+   * with `contact_blocked`.
+   */
+  blocked_at: string | null
+  /**
+   * True when the block is also active on Meta for WhatsApp. Meta only accepts
+   * someone who wrote in the last 24h; otherwise the block is Wazapi-only and
+   * this stays false. True with `blocked_at` null means Meta refused the
+   * unblock — call `unblockContact` again.
+   */
+  meta_blocked: boolean
   last_interaction_at: string | null
   created_at: string | null
   updated_at: string | null
@@ -229,6 +242,7 @@ export type SendComplianceErrorCode =
   | 'marketing_sends_disabled'
   | 'template_sends_disabled'
   | 'recipient_opted_out'
+  | 'contact_blocked'
   | 'recipient_marketing_limit_reached'
   | 'duplicate_template_send'
   | 'template_frequency_cap_exceeded'
