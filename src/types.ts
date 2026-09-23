@@ -303,6 +303,12 @@ export interface ListParams {
   updated_after?: string
 }
 
+/** `GET /contacts` filters. `email` is exact and case-insensitive; `phone` accepts any format and matches a Brazilian mobile with or without the ninth digit (API 1.11). */
+export interface ListContactsParams extends ListParams {
+  email?: string
+  phone?: string
+}
+
 export interface AcceptedResult {
   operation: Operation
   /** True when the request replayed a previously accepted idempotent operation. */

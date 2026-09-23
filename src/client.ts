@@ -9,6 +9,7 @@ import type {
   Envelope,
   ExecuteFlowInput,
   Flow,
+  ListContactsParams,
   ListParams,
   Message,
   Operation,
@@ -85,7 +86,7 @@ export class WazapiClient {
 
   // ---- Contacts ---------------------------------------------------------
 
-  listContacts(params: ListParams = {}): Promise<Paginated<Contact>> {
+  listContacts(params: ListContactsParams = {}): Promise<Paginated<Contact>> {
     return this.request('GET', this.withQuery('/contacts', params))
   }
 
@@ -420,7 +421,7 @@ export class WazapiClient {
     return { data: parsed as T, headers: response.headers }
   }
 
-  private withQuery(path: string, params: ListParams): string {
+  private withQuery(path: string, params: ListContactsParams): string {
     const search = new URLSearchParams()
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null) search.set(key, String(value))

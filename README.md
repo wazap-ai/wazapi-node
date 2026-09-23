@@ -256,7 +256,7 @@ new WazapiClient({
 ## API surface
 
 - `listChannels()`
-- `listContacts(params)`, `getContact(uuid)`, `updateContact(uuid, input)`, `upsertContactByExternalId(externalId, input)`
+- `listContacts(params)` (filters `query`, `email`, `phone`), `getContact(uuid)`, `updateContact(uuid, input)`, `upsertContactByExternalId(externalId, input)`
 - `listTemplates(params)`, `getTemplate(name)`
 - `listFlows(params)`, `getFlow(uuid)`, `executeFlow(flowUuid, input, idempotencyKey?)`
 - `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`
