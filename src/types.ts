@@ -246,6 +246,7 @@ export interface Operation {
   type: 'message.send' | 'flow.execute'
   status: OperationStatus
   result: Record<string, unknown> | null
+  /** `message` is always English since API 1.7; branch on `code`. */
   error: { code: string; message: string | null } | null
   created_at: string | null
   started_at: string | null
