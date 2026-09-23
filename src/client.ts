@@ -24,6 +24,7 @@ import type {
   StoreProductWrite,
   StoreSummary,
   Template,
+  TemplateSendContent,
 } from './types.js'
 
 export interface WazapiClientOptions {
@@ -197,14 +198,16 @@ export class WazapiClient {
   }
 
   /**
-   * Convenience wrapper for a template send with positional body parameters.
+   * Convenience wrapper for a template send: body values in `parameters` (or
+   * `components.body`), plus `components.header` / `components.buttons` when
+   * the template's `variables` asks for them.
    * Pass `null` as `channelUuid` to let the API pick the company's single
    * WhatsApp channel.
    */
   sendTemplate(
     channelUuid: string | null,
     phone: string,
-    template: { name: string; language?: string; parameters?: string[] },
+    template: TemplateSendContent,
     idempotencyKey?: string
   ): Promise<AcceptedResult> {
     return this.sendMessage(

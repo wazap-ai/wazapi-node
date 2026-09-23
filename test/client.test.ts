@@ -185,3 +185,26 @@ test('deletes a store product and lists categories (API 1.6)', async () => {
     'GET https://example.test/api/v1/store/categories',
   ])
 })
+
+test('sends template components as given (API 1.9)', async () => {
+  let sent: any
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((_url, init) => {
+      sent = JSON.parse(String(init.body))
+      return json({ data: { uuid: 'op-1', type: 'message.send', status: 'queued' } }, { status: 202 })
+    }),
+  })
+  const components = {
+    header: { type: 'image' as const, link: 'https://store.example.com/p.jpg' },
+    body: ['Maria', '1847'],
+    buttons: [
+      { index: 0, url_suffix: 'tracking/1847' },
+      { index: 1, coupon_code: 'COMEBACK10' },
+    ],
+  }
+  await client.sendTemplate(null, '+5511999998888', { name: 'order_shipped', components })
+  assert.deepEqual(sent.content, { name: 'order_shipped', components })
+  assert.equal(sent.type, 'template')
+})
