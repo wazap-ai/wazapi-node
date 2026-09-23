@@ -104,6 +104,14 @@ export class WazapiClient {
     return body.data
   }
 
+  /** Creates a contact from its phone, or returns the existing one with the fields applied (API 1.12). */
+  async createContact(
+    input: ContactWrite & { phone: string; external_id?: string }
+  ): Promise<Contact> {
+    const body = await this.request<Envelope<Contact>>('POST', '/contacts', { body: input })
+    return body.data
+  }
+
   async upsertContactByExternalId(
     externalId: string,
     input: ContactWrite & { phone: string }
