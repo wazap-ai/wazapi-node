@@ -91,11 +91,53 @@ export type TemplateStatus =
 
 export type TemplateCategory = 'AUTHENTICATION' | 'MARKETING' | 'UTILITY'
 
+export interface TemplateButton {
+  /** Use as `components.buttons[].index` when sending. */
+  index: number
+  type: 'QUICK_REPLY' | 'URL' | 'PHONE_NUMBER' | 'COPY_CODE'
+  /** Button label; `null` for COPY_CODE. */
+  text: string | null
+  /** Field to send for this button, or `null` when it takes no value. */
+  parameter: 'url_suffix' | 'coupon_code' | null
+}
+
 export interface TemplateVariables {
   body_parameter_count: number
   body_named_parameters: string[]
   header: { format: string; has_variable: boolean } | null
   has_dynamic_buttons: boolean
+  /** API 1.9: every button in template order, with the value it takes at send time. */
+  buttons: TemplateButton[]
+}
+
+/** Header value for a template send; `type` is `variables.header.format` lowercased. */
+export type TemplateSendHeader =
+  | { type: 'text'; text: string }
+  | { type: 'image' | 'video'; link: string }
+  | { type: 'document'; link: string; filename?: string }
+  | { type: 'location'; latitude: number; longitude: number; name?: string; address?: string }
+
+export type TemplateSendButton =
+  | { index: number; url_suffix: string }
+  | { index: number; coupon_code: string }
+
+/**
+ * API 1.9: values a template needs at send time. A missing or extra header or
+ * button answers `template_component_mismatch`.
+ */
+export interface TemplateSendComponents {
+  header?: TemplateSendHeader
+  /** Body `{{1}}..{{n}}` values, in order. Do not also send `parameters`. */
+  body?: string[]
+  buttons?: TemplateSendButton[]
+}
+
+export interface TemplateSendContent {
+  name: string
+  language?: string
+  /** Shortcut for `components.body`. */
+  parameters?: string[]
+  components?: TemplateSendComponents
 }
 
 export interface Template {
@@ -233,7 +275,7 @@ export type SendMessageInput =
       channel_uuid?: string
       recipient: Recipient
       type: 'template'
-      content: { name: string; language?: string; parameters?: string[] }
+      content: TemplateSendContent
     }
 
 export interface ExecuteFlowInput {

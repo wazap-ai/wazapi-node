@@ -62,13 +62,6 @@ const template = await wazapi.getTemplate('order_confirmed')
 // How many positional {{1}}..{{n}} the body expects:
 const expected = template.variables.body_parameter_count
 
-// Templates needing a media/variable header, named params, or dynamic buttons
-// are not sendable through the API yet — check before building the payload:
-const sendable =
-  !template.variables.header?.has_variable &&
-  template.variables.header?.format !== 'IMAGE' &&
-  !template.variables.has_dynamic_buttons
-
 const { operation, replayed } = await wazapi.sendTemplate(
   channel.uuid,
   '+5511999998888',
@@ -78,6 +71,34 @@ const { operation, replayed } = await wazapi.sendTemplate(
   'order-1847-confirmation'
 )
 ```
+
+### Header, media and buttons (API 1.9)
+
+When `variables` asks for more than body values, send them in `components`.
+`variables.header` tells you the header type; each entry of
+`variables.buttons` with a non-null `parameter` needs a value under the same
+`index`:
+
+```ts
+await wazapi.sendTemplate(null, '+5511999998888', {
+  name: 'order_shipped',
+  language: 'pt_BR',
+  components: {
+    // type = variables.header.format lowercased: text | image | video | document | location
+    header: { type: 'image', link: 'https://store.example.com/p/1847.jpg' },
+    body: ['Maria', '1847'], // same as `parameters` — send one or the other
+    buttons: [
+      { index: 0, url_suffix: 'tracking/1847' }, // URL button ending in {{1}}
+      { index: 1, coupon_code: 'COMEBACK10' }, // copy-code button
+    ],
+  },
+})
+```
+
+Media is sent by public `link`; Meta downloads it on delivery. A missing or
+extra header or button answers `template_component_mismatch`. Templates whose
+body uses named `{{name}}` placeholders are not sendable yet
+(`template_format_unsupported`).
 
 The send is asynchronous: the API returns `202 Accepted` with an operation you
 poll (or receive via webhook). `waitForOperation` handles the polling:
@@ -124,7 +145,8 @@ operation is created):
 | `template_not_found`                | No APPROVED template with that name.                 |
 | `template_language_unavailable`     | No approved version in the requested `language`.     |
 | `template_parameter_count_mismatch` | `parameters.length` ≠ `body_parameter_count`.        |
-| `template_format_unsupported`       | Needs media/variable header, named params, buttons.  |
+| `template_component_mismatch`       | `components` does not match the template (missing/extra header or button). |
+| `template_format_unsupported`       | Body uses named `{{name}}` placeholders.             |
 | `channel_required`                  | `channel_uuid` omitted and the company has several connected channels. |
 | `channel_not_found`                 | Unknown `channel_uuid`, or no WhatsApp channel connected.              |
 
