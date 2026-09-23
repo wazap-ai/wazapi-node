@@ -226,3 +226,26 @@ test('sends library media and quick reply payload as given (API 1.10)', async ()
   await client.sendTemplate(null, '+5511999998888', { name: 'invoice', components })
   assert.deepEqual(sent.content.components, components)
 })
+
+test('blocks and unblocks a contact on the block sub-resource', async () => {
+  const seen: string[] = []
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      seen.push(`${init.method} ${url}`)
+      const blocked = init.method === 'POST'
+      return json({
+        data: { uuid: 'c-1', blocked_at: blocked ? '2026-09-23T12:00:00Z' : null, meta_blocked: false },
+      })
+    }),
+  })
+  const blocked = await client.blockContact('c-1')
+  assert.equal(blocked.blocked_at, '2026-09-23T12:00:00Z')
+  const unblocked = await client.unblockContact('c-1')
+  assert.equal(unblocked.blocked_at, null)
+  assert.deepEqual(seen, [
+    'POST https://example.test/api/v1/contacts/c-1/block',
+    'DELETE https://example.test/api/v1/contacts/c-1/block',
+  ])
+})

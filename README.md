@@ -184,11 +184,17 @@ Use `error.isComplianceBlocked` to branch on this whole family, and the
 
 ```ts
 // Upsert by your own system's id — idempotent, safe to call repeatedly
-await wazapi.upsertContactByExternalId('customer-1847', {
+const contact = await wazapi.upsertContactByExternalId('customer-1847', {
   phone: '+5511999998888',
   name: 'Maria Silva',
   custom_fields: { tier: 'gold' },
 })
+
+// Block a contact (API 1.13, scope `contacts:block`): their messages are dropped
+// and every send to them fails with `contact_blocked`
+const blocked = await wazapi.blockContact(contact.uuid)
+blocked.meta_blocked // false when Meta refused (only people who wrote in the last 24h)
+await wazapi.unblockContact(contact.uuid)
 ```
 
 ## Webhooks
@@ -256,7 +262,7 @@ new WazapiClient({
 ## API surface
 
 - `listChannels()`
-- `listContacts(params)` (filters `query`, `email`, `phone`), `getContact(uuid)`, `createContact(input)`, `updateContact(uuid, input)`, `upsertContactByExternalId(externalId, input)`
+- `listContacts(params)` (filters `query`, `email`, `phone`), `getContact(uuid)`, `createContact(input)`, `updateContact(uuid, input)`, `blockContact(uuid)`, `unblockContact(uuid)`, `upsertContactByExternalId(externalId, input)`
 - `listTemplates(params)`, `getTemplate(name)`
 - `listFlows(params)`, `getFlow(uuid)`, `executeFlow(flowUuid, input, idempotencyKey?)`
 - `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`
