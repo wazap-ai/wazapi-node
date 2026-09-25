@@ -26,6 +26,9 @@ import type {
   StoreSummary,
   Template,
   TemplateSendContent,
+  StoreProductListParams,
+  StoreCategoryWrite,
+  StoreCategoryPatch,
 } from './types.js'
 
 export interface WazapiClientOptions {
@@ -251,7 +254,7 @@ export class WazapiClient {
     return body.data
   }
 
-  listStoreProducts(params: ListParams = {}): Promise<Paginated<StoreProduct>> {
+  listStoreProducts(params: StoreProductListParams = {}): Promise<Paginated<StoreProduct>> {
     return this.request('GET', this.withQuery('/store/products', params))
   }
 
@@ -291,10 +294,36 @@ export class WazapiClient {
     await this.request<null>('DELETE', `/store/products/${encode(uuid)}`)
   }
 
-  /** Store categories, to discover the `category_uuid` of a product. (API 1.6) */
-  async listStoreCategories(): Promise<StoreCategory[]> {
-    const body = await this.request<Envelope<StoreCategory[]>>('GET', '/store/categories')
+  /** Store categories, to discover the `category_uuid` of a product. `external_id` is an exact lookup. (API 1.6, filter 1.15) */
+  async listStoreCategories(params: { external_id?: string } = {}): Promise<StoreCategory[]> {
+    const body = await this.request<Envelope<StoreCategory[]>>(
+      'GET',
+      this.withQuery('/store/categories', params)
+    )
     return body.data
+  }
+
+  /** Creates a category; send `external_id` to link it to your catalog and reference it from products with `category_external_id`. (API 1.15) */
+  async createStoreCategory(input: StoreCategoryWrite): Promise<StoreCategory> {
+    const body = await this.request<Envelope<StoreCategory>>('POST', '/store/categories', {
+      body: input,
+    })
+    return body.data
+  }
+
+  /** Partial update: an omitted field keeps its value. (API 1.15) */
+  async updateStoreCategory(uuid: string, input: StoreCategoryPatch): Promise<StoreCategory> {
+    const body = await this.request<Envelope<StoreCategory>>(
+      'PATCH',
+      `/store/categories/${encode(uuid)}`,
+      { body: input }
+    )
+    return body.data
+  }
+
+  /** Deletes the category; its products are kept and become uncategorised. (API 1.15) */
+  async deleteStoreCategory(uuid: string): Promise<void> {
+    await this.request<null>('DELETE', `/store/categories/${encode(uuid)}`)
   }
 
   /**
@@ -447,7 +476,7 @@ export class WazapiClient {
     return { data: parsed as T, headers: response.headers }
   }
 
-  private withQuery(path: string, params: ListContactsParams): string {
+  private withQuery(path: string, params: object): string {
     const search = new URLSearchParams()
     for (const [key, value] of Object.entries(params)) {
       if (value !== undefined && value !== null) search.set(key, String(value))

@@ -317,6 +317,11 @@ export interface ListParams {
   updated_after?: string
 }
 
+export interface StoreProductListParams extends ListParams {
+  /** Exact match on the product's `external_id` — look a product up by your own id. (API 1.14) */
+  external_id?: string
+}
+
 /** `GET /contacts` filters. `email` is exact and case-insensitive; `phone` accepts any format and matches a Brazilian mobile with or without the ninth digit (API 1.11). */
 export interface ListContactsParams extends ListParams {
   email?: string
@@ -369,6 +374,11 @@ export interface StoreProduct {
    * handle are updated on re-import/batch instead of duplicated.
    */
   import_handle: string | null
+  /**
+   * The product's id in your own platform (ERP, e-commerce), for a two-way
+   * link. Unique per store when set. (API 1.14)
+   */
+  external_id: string | null
   variants: StoreProductVariant[]
   created_at: string | null
   updated_at: string | null
@@ -378,6 +388,12 @@ export interface StoreProductWrite {
   name: string
   description?: string | null
   category_uuid?: string | null
+  /**
+   * Alternative to `category_uuid`: the category by the `external_id` you gave
+   * it. An unknown id fails with `422 category_not_found`; `null` removes the
+   * category. (API 1.15)
+   */
+  category_external_id?: string | null
   price_cents: number
   promo_price_cents?: number | null
   highlighted?: boolean
@@ -386,6 +402,11 @@ export interface StoreProductWrite {
   active?: boolean
   position?: number
   import_handle?: string | null
+  /**
+   * Your platform's id for this product (up to 120 characters). Must be unique
+   * in the store, otherwise `422 external_id_taken`; `null` clears it. (API 1.14)
+   */
+  external_id?: string | null
   /**
    * Up to 4 public http(s) URLs of JPEG, PNG or WebP images (5 MB each). Wazapi
    * downloads and re-hosts them; the first one is the cover. Omit to keep the
@@ -418,7 +439,22 @@ export interface StoreCategory {
   uuid: string
   name: string
   position: number
+  /** The category's id in your own platform. Unique per store when set. (API 1.15) */
+  external_id: string | null
 }
+
+export interface StoreCategoryWrite {
+  name: string
+  /**
+   * Your platform's id for this category (up to 120 characters). Unique in the
+   * store, otherwise `422 category_external_id_taken`; `null` clears it.
+   */
+  external_id?: string | null
+  /** Sort order on the storefront (lower first). Defaults to 0. */
+  position?: number
+}
+
+export type StoreCategoryPatch = Partial<StoreCategoryWrite>
 
 export type StoreOrderStatus = 'novo' | 'confirmado' | 'pago' | 'entregue' | 'cancelado'
 
