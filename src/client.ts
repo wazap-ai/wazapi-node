@@ -26,6 +26,7 @@ import type {
   StoreSummary,
   Template,
   TemplateSendContent,
+  StoreProductListParams,
 } from './types.js'
 
 export interface WazapiClientOptions {
@@ -251,7 +252,7 @@ export class WazapiClient {
     return body.data
   }
 
-  listStoreProducts(params: ListParams = {}): Promise<Paginated<StoreProduct>> {
+  listStoreProducts(params: StoreProductListParams = {}): Promise<Paginated<StoreProduct>> {
     return this.request('GET', this.withQuery('/store/products', params))
   }
 
