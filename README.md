@@ -268,7 +268,7 @@ new WazapiClient({
 - `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`
 - `sendMessage(input, idempotencyKey?)`, `sendText(...)`, `sendTemplate(...)`
 - `getOperation(uuid)`, `waitForOperation(uuid, options?)`
-- `listStoreProducts(params)` (filter `external_id`, API 1.14), `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, input)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(items)`, `listStoreOrders(params)`
+- `listStoreProducts(params)` (filter `external_id`, API 1.14), `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, input)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(items)`, `listStoreCategories(params?)`, `createStoreCategory(input)`, `updateStoreCategory(uuid, input)`, `deleteStoreCategory(uuid)` (API 1.15), `listStoreOrders(params)`
 
 See the OpenAPI contract at `https://wazapi.io/api/openapi/v1.json` for the full
 schema.
