@@ -305,7 +305,7 @@ new WazapiClient({
 - `getStore()`, `listStoreProducts(params)`, `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, patch)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(products)`, `listStoreCategories()`
 - `listStoreOrders(params)`, `getStoreOrder(uuid)`, `updateStoreOrderStatus(uuid, status)`
 - `getOperation(uuid)`, `waitForOperation(uuid, options?)`
-- `listStoreProducts(params)` (filter `external_id`, API 1.14), `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, input)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(items)`, `listStoreCategories(params?)`, `createStoreCategory(input)`, `updateStoreCategory(uuid, input)`, `deleteStoreCategory(uuid)` (API 1.15), `listStoreOrders(params)`
+- `listStoreProducts(params)` (filter `external_id`, API 1.14), `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, input)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(items)` (matches by `import_handle`, else by `external_id` since API 1.16), `listStoreCategories(params?)`, `createStoreCategory(input)`, `updateStoreCategory(uuid, input)`, `deleteStoreCategory(uuid)` (API 1.15), `listStoreOrders(params)`
 
 See the OpenAPI contract at `https://wazapi.io/api/openapi/v1.json` for the full
 schema.
