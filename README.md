@@ -2,7 +2,7 @@
 
 Official Node.js SDK for the [Wazapi](https://wazapi.io) Public API v1 — a
 server-to-server client for sending WhatsApp messages, triggering flows, and
-managing contacts/templates.
+managing contacts, templates and the store (products and orders).
 
 - Zero runtime dependencies (uses the native `fetch` on Node 18+).
 - Fully typed against the OpenAPI contract (`GET /api/openapi/v1.json`).
@@ -23,7 +23,7 @@ import { WazapiClient } from '@wazapi/sdk'
 const wazapi = new WazapiClient({ token: process.env.WAZAPI_API_TOKEN! })
 
 // Fire a template and wait for the result. `null` = let the API pick the
-// company's WhatsApp channel (it has one number per company).
+// company's WhatsApp channel (works when only one channel is connected).
 const { operation } = await wazapi.sendTemplate(null, '+5511999998888', {
   name: 'order_confirmed',
   parameters: ['Maria', '1847'],
@@ -197,6 +197,31 @@ blocked.meta_blocked // false when Meta refused (only people who wrote in the la
 await wazapi.unblockContact(contact.uuid)
 ```
 
+## Store (API 1.6)
+
+Products and orders of the company's Wazapi store. Product writes are
+synchronous (no operation to poll); `updateStoreProduct` is a partial update.
+
+```ts
+const store = await wazapi.getStore()
+const { data: products } = await wazapi.listStoreProducts({ limit: 50 })
+
+const product = await wazapi.createStoreProduct({
+  name: 'Camiseta básica',
+  price_cents: 4990,
+  image_urls: ['https://cdn.example.com/camiseta.jpg'],
+})
+await wazapi.updateStoreProduct(product.uuid, { promo_price_cents: 3990 })
+
+// Bulk import; `import_handle` dedupes on re-import instead of duplicating
+const batch = await wazapi.batchStoreProducts(products)
+
+const { data: orders } = await wazapi.listStoreOrders({ status: 'novo' })
+await wazapi.updateStoreOrderStatus(orders[0].uuid, 'confirmado')
+```
+
+New orders also arrive as the `order.created` webhook event.
+
 ## Webhooks
 
 Wazapi POSTs events to the HTTPS endpoint you register in **Settings → Wazapi API**.
@@ -221,8 +246,18 @@ function handle(event: WazapiWebhookEvent) {
     case 'message.deleted':
       // Opt-in (API 1.5): never carries content — drop your copy
       return forget(event.data.message_uuid)
+    case 'message.transcribed':
+      // Audio transcript, when the company has transcription on
+      return attachTranscript(event.data.message_uuid, event.data.transcript)
+    case 'conversation.created':
+    case 'conversation.updated':
+      return syncConversation(event.data)
     case 'flow.execution.updated':
       return event.data.error ? alert(event.data.error.code) : done()
+    case 'order.created':
+      return createOrder(event.data)
+    case 'webhook.test':
+      return
   }
 }
 ```
@@ -267,6 +302,8 @@ new WazapiClient({
 - `listFlows(params)`, `getFlow(uuid)`, `executeFlow(flowUuid, input, idempotencyKey?)`
 - `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`
 - `sendMessage(input, idempotencyKey?)`, `sendText(...)`, `sendTemplate(...)`
+- `getStore()`, `listStoreProducts(params)`, `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, patch)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(products)`, `listStoreCategories()`
+- `listStoreOrders(params)`, `getStoreOrder(uuid)`, `updateStoreOrderStatus(uuid, status)`
 - `getOperation(uuid)`, `waitForOperation(uuid, options?)`
 
 See the OpenAPI contract at `https://wazapi.io/api/openapi/v1.json` for the full
