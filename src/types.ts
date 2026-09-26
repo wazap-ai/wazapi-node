@@ -460,6 +460,11 @@ export type StoreOrderStatus = 'novo' | 'confirmado' | 'pago' | 'entregue' | 'ca
 
 export interface StoreOrderItem {
   product_uuid: string
+  /**
+   * The product's `external_id` at the time of the order (snapshot). `null`
+   * when the product had none or the order predates API 1.16.
+   */
+  product_external_id: string | null
   name: string
   variant_label: string | null
   quantity: number
