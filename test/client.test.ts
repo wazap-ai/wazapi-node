@@ -227,6 +227,24 @@ test('sends library media and quick reply payload as given (API 1.10)', async ()
   assert.deepEqual(sent.content.components, components)
 })
 
+test('sends lead tracking on createContact and reads it back (API 1.18)', async () => {
+  let sent: any = null
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((_url, init) => {
+      sent = JSON.parse(String(init.body))
+      return json({ data: { uuid: 'c-1', tracking: sent.tracking, custom_fields: sent.tracking } })
+    }),
+  })
+  const contact = await client.createContact({
+    phone: '+5511999998888',
+    tracking: { utm_source: 'google', utm_campaign: 'black-friday', gclid: 'g-1' },
+  })
+  assert.deepEqual(sent.tracking, { utm_source: 'google', utm_campaign: 'black-friday', gclid: 'g-1' })
+  assert.equal(contact.tracking.utm_source, 'google')
+})
+
 test('blocks and unblocks a contact on the block sub-resource', async () => {
   const seen: string[] = []
   const client = new WazapiClient({
