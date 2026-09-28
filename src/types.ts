@@ -52,6 +52,12 @@ export interface Contact {
   tags: string[]
   custom_fields: Record<string, unknown>
   /**
+   * Lead attribution stored on the contact (API 1.18), first touch: utm_* keys,
+   * click IDs and the Click-to-WhatsApp fields Wazapi captures. Only filled keys
+   * come back. The same keys are also in `custom_fields`.
+   */
+  tracking: ContactTracking
+  /**
    * True when the contact opted out of marketing messages (reply keyword such
    * as PARAR/STOP, the native WhatsApp control, or manual suppression).
    * Sending a MARKETING template to an opted-out contact fails with
@@ -82,7 +88,40 @@ export interface ContactWrite {
   email?: string | null
   tags?: string[]
   custom_fields?: Record<string, unknown>
+  /**
+   * Lead attribution (API 1.18). First touch: a key is written only when the
+   * contact has no value for it yet, so the lead's origin is never overwritten
+   * (send the key in `custom_fields` to correct it). Built in: no custom field
+   * has to be created. Any key other than utm_* or a known click ID answers 422.
+   */
+  tracking?: ContactTrackingWrite
 }
+
+/** Tracking keys accepted on write: any `utm_*` plus the known click IDs. */
+export type ContactTrackingKey =
+  | 'utm_source'
+  | 'utm_medium'
+  | 'utm_campaign'
+  | 'utm_term'
+  | 'utm_content'
+  | `utm_${string}`
+  | 'gclid'
+  | 'gbraid'
+  | 'wbraid'
+  | 'fbclid'
+  | 'msclkid'
+  | 'ttclid'
+  | 'ctwa_clid'
+
+/** Up to 30 keys, values up to 500 characters. */
+export type ContactTrackingWrite = Partial<Record<ContactTrackingKey, string>>
+
+/**
+ * What `Contact.tracking` returns: the write keys plus the ad fields Wazapi
+ * records from Click-to-WhatsApp (`ad_id`, `ad_source_url`, `ad_headline`,
+ * `ad_body`, `referral_source`, `referral_ref`).
+ */
+export type ContactTracking = Record<string, string>
 
 export interface Flow {
   uuid: string

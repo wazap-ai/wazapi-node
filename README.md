@@ -188,7 +188,11 @@ const contact = await wazapi.upsertContactByExternalId('customer-1847', {
   phone: '+5511999998888',
   name: 'Maria Silva',
   custom_fields: { tier: 'gold' },
+  // Lead attribution (API 1.18): built in, first touch — a key already set on
+  // the contact (e.g. a Click-to-WhatsApp ad) is never overwritten
+  tracking: { utm_source: 'google', utm_campaign: 'black-friday', gclid: 'Cj0KCQ...' },
 })
+contact.tracking // { utm_source: 'google', ... } — only the filled keys
 
 // Block a contact (API 1.13, scope `contacts:block`): their messages are dropped
 // and every send to them fails with `contact_blocked`
