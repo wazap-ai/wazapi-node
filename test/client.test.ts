@@ -249,3 +249,19 @@ test('blocks and unblocks a contact on the block sub-resource', async () => {
     'DELETE https://example.test/api/v1/contacts/c-1/block',
   ])
 })
+
+test('coupon and policy methods preserve explicit financial input and optimistic version', async () => {
+  const seen: { url: string; method: string; body: any }[] = []
+  const client = new WazapiClient({ token: 'waz_api_test', baseUrl: 'https://example.test/api/v1', fetch: stubFetch((url, init) => {
+    seen.push({ url, method: init.method || '', body: init.body ? JSON.parse(String(init.body)) : null })
+    return json({ uuid: 'id', version: 2 })
+  }) })
+  const rules = { kind: 'percent' as const, value: 500, maxDiscountCents: 1000 }
+  await client.updateStoreCoupon('coupon/id', { code: 'SAVE5', name: 'Save', status: 'active', version: 1, rules })
+  await client.saveAgentDiscountPolicy('agent/id', { version: 0, enabled: true, allowCoupons: true, minimumValue: 100, rules })
+  assert.match(seen[0].url, /coupons\/coupon%2Fid$/)
+  assert.equal(seen[0].body.version, 1)
+  assert.equal(seen[0].body.rules.value, 500)
+  assert.equal(seen[1].method, 'PUT')
+  assert.equal(seen[1].body.version, 0)
+})
