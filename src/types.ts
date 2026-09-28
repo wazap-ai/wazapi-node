@@ -469,10 +469,12 @@ export interface StoreOrderItem {
   variant_label: string | null
   quantity: number
   unit_price_cents: number
+  discount_cents?: number
+  net_cents?: number
   total_cents: number
 }
 
-export type StoreOrderSource = 'storefront' | 'whatsapp_catalog'
+export type StoreOrderSource = 'storefront' | 'whatsapp_catalog' | 'manual' | 'flow' | 'ai_agent'
 
 export interface StoreOrder {
   uuid: string
@@ -495,12 +497,14 @@ export interface StoreOrder {
   /** Inbox conversation opened by the order automation, when available. */
   conversation_uuid: string | null
   items: StoreOrderItem[]
+  discount_cents?: number
+  discount?: Record<string, unknown> | null
   subtotal_cents: number
   shipping_name: string | null
   shipping_cents: number
   total_cents: number
   /** `catalog` = order from the native WhatsApp catalog (payment arranged in chat). */
-  payment_method: 'pix' | 'link' | 'on_delivery' | 'catalog'
+  payment_method: 'pix' | 'link' | 'on_delivery' | 'catalog' | 'checkout'
   notes: string | null
   created_at: string | null
   updated_at: string | null
@@ -666,6 +670,8 @@ export interface OrderCreatedData extends WebhookContactRefs {
   customer_phone: string
   contact_uuid: string | null
   items: StoreOrderItem[]
+  discount_cents?: number
+  discount?: Record<string, unknown> | null
   subtotal_cents: number
   shipping_name: string | null
   shipping_cents: number
@@ -727,3 +733,44 @@ export type WazapiWebhookEvent =
   | FlowExecutionUpdatedEvent
   | OrderCreatedEvent
   | WebhookTestEvent
+
+export interface DiscountRules {
+  kind: 'percent' | 'fixed'
+  /** Basis points for percent; cents for fixed. */
+  value: number
+  maxDiscountCents?: number | null
+  minimumCents?: number
+  productUuids?: string[]
+  categoryUuids?: string[]
+}
+export interface StoreCouponInput {
+  code: string
+  name: string
+  status: 'draft' | 'active' | 'paused' | 'archived'
+  version?: number
+  rules: DiscountRules
+  startsAt?: string | null
+  endsAt?: string | null
+  usageLimit?: number | null
+  perContactLimit?: number | null
+  contactUuid?: string | null
+  allowAi?: boolean
+}
+export interface StoreCoupon extends Omit<StoreCouponInput, 'contactUuid'> {
+  uuid: string
+  version: number
+  currency: string
+  personal: boolean
+}
+export interface AgentDiscountPolicyInput {
+  version: number
+  enabled: boolean
+  allowCoupons: boolean
+  minimumValue: number
+  rules: DiscountRules
+}
+export interface AgentDiscountPolicy extends AgentDiscountPolicyInput { uuid: string }
+export interface StoreCouponPage {
+  data: StoreCoupon[]
+  meta: { currentPage: number; lastPage: number; perPage: number; total: number }
+}

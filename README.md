@@ -309,3 +309,24 @@ new WazapiClient({
 
 See the OpenAPI contract at `https://wazapi.io/api/openapi/v1.json` for the full
 schema.
+
+### Coupons and AI discount policies (API 1.17)
+
+`listStoreCoupons`, `createStoreCoupon`, `updateStoreCoupon`, `getAgentDiscountPolicy` and
+`saveAgentDiscountPolicy` use the API's camelCase financial contract. Coupon writes require
+`store:coupons`; policy writes require `store:discounts`. The token creator must still have
+the matching company financial permission. Existing generic store access does not authorize
+these writes.
+
+```ts
+await wazapi.createStoreCoupon({
+  code: 'WELCOME5', name: 'Welcome', status: 'draft',
+  rules: { kind: 'percent', value: 500, maxDiscountCents: 1000 },
+})
+```
+
+Percent values are basis points (500 = 5%); fixed amounts and caps are cents. Use the current
+version when updating a coupon or policy (version 0 creates a policy). Archive coupons rather
+than deleting them. Orders expose immutable `discount_cents` and `discount`; item `net_cents`
+is the amount after its allocated discount. A reserved use counts toward coupon limits;
+confirmed payment consumes it. Refunds do not automatically restore a use.

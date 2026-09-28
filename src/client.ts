@@ -1,5 +1,6 @@
 import { WazapiError } from './error.js'
 import type {
+  StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
   AcceptedResult,
   Channel,
   Contact,
@@ -334,6 +335,22 @@ export class WazapiClient {
    */
   batchStoreProducts(products: StoreProductWrite[]): Promise<StoreBatchResult> {
     return this.request('POST', '/store/products/batch', { body: { products } })
+  }
+
+  listStoreCoupons(page = 1): Promise<StoreCouponPage> {
+    return this.request('GET', `/store/coupons?page=${encode(String(page))}`)
+  }
+  createStoreCoupon(input: StoreCouponInput): Promise<StoreCoupon> {
+    return this.request('POST', '/store/coupons', { body: input })
+  }
+  updateStoreCoupon(uuid: string, input: StoreCouponInput & { version: number }): Promise<StoreCoupon> {
+    return this.request('PUT', `/store/coupons/${encode(uuid)}`, { body: input })
+  }
+  getAgentDiscountPolicy(agentUuid: string): Promise<AgentDiscountPolicy | null> {
+    return this.request('GET', `/store/discounts/agents/${encode(agentUuid)}`)
+  }
+  saveAgentDiscountPolicy(agentUuid: string, input: AgentDiscountPolicyInput): Promise<AgentDiscountPolicy> {
+    return this.request('PUT', `/store/discounts/agents/${encode(agentUuid)}`, { body: input })
   }
 
   listStoreOrders(params: ListParams = {}): Promise<Paginated<StoreOrder>> {
