@@ -20,7 +20,11 @@ import type {
   StoreBatchResult,
   StoreCategory,
   StoreOrder,
+  StoreOrderCreate,
+  StoreOrderCreateResult,
   StoreOrderStatus,
+  StoreShippingOptionList,
+  ListStoreOrdersParams,
   StoreProduct,
   StoreProductPatch,
   StoreProductWrite,
@@ -353,8 +357,32 @@ export class WazapiClient {
     return this.request('PUT', `/store/discounts/agents/${encode(agentUuid)}`, { body: input })
   }
 
-  listStoreOrders(params: ListParams = {}): Promise<Paginated<StoreOrder>> {
+  /** Orders, oldest first. Filters `source`, `payment_method`, `query` and `updated_after` since API 1.19. */
+  listStoreOrders(params: ListStoreOrdersParams = {}): Promise<Paginated<StoreOrder>> {
     return this.request('GET', this.withQuery('/store/orders', params))
+  }
+
+  /** Active shipping options, to discover `shipping_option_uuid`. Requires `store:read`. (API 1.19) */
+  listStoreShippingOptions(): Promise<StoreShippingOptionList> {
+    return this.request('GET', '/store/shipping-options')
+  }
+
+  /**
+   * Records a sale closed outside the storefront (`source: 'api'`). Requires the
+   * `store:orders` scope: the order runs the store automation, which may send
+   * WhatsApp messages to the buyer. Reusing the idempotency key with the same
+   * body returns the same order with `replayed: true` and no side effect.
+   * (API 1.19)
+   */
+  async createStoreOrder(
+    input: StoreOrderCreate,
+    idempotencyKey?: string
+  ): Promise<StoreOrderCreateResult> {
+    const { data, headers } = await this.rawRequest<Envelope<StoreOrder>>('POST', '/store/orders', {
+      body: input,
+      headers: { 'Idempotency-Key': idempotencyKey ?? this.newIdempotencyKey() },
+    })
+    return { order: data.data, replayed: headers.get('Idempotent-Replayed') === 'true' }
   }
 
   async getStoreOrder(uuid: string): Promise<StoreOrder> {
@@ -365,8 +393,9 @@ export class WazapiClient {
   /**
    * Transitions an order through its state machine (novo→confirmado→pago→entregue,
    * cancel from any non-terminal state). An invalid transition throws a
-   * `WazapiError` with code `invalid_status_transition` (422). Cancelling
-   * restores tracked stock.
+   * `WazapiError` with code `invalid_status_transition` (422); an order charged
+   * through the payment gateway throws `gateway_managed` (409, API 1.19).
+   * Cancelling restores tracked stock.
    */
   async updateStoreOrderStatus(
     uuid: string,

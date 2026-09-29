@@ -5,6 +5,7 @@ export type PublicApiScope =
   | 'channels:read'
   | 'contacts:read'
   | 'contacts:write'
+  | 'contacts:block'
   | 'conversations:read'
   | 'messages:read'
   | 'messages:write'
@@ -14,6 +15,10 @@ export type PublicApiScope =
   | 'operations:read'
   | 'store:read'
   | 'store:write'
+  /** Create orders (API 1.19). Not granted by `store:write`: an order sends WhatsApp messages to the buyer. */
+  | 'store:orders'
+  | 'store:coupons'
+  | 'store:discounts'
 
 export interface PaginationMeta {
   next_cursor: string | null
@@ -359,6 +364,23 @@ export interface ListParams {
 export interface StoreProductListParams extends ListParams {
   /** Exact match on the product's `external_id` — look a product up by your own id. (API 1.14) */
   external_id?: string
+  /** Only products of this category; another company's category returns an empty list. (API 1.19) */
+  category_uuid?: string
+  /** Only active or inactive products. (API 1.19) */
+  active?: boolean
+}
+
+/** `GET /store/orders` filters (API 1.19). An unknown `status` is ignored. */
+export interface ListStoreOrdersParams {
+  after?: string
+  limit?: number
+  status?: StoreOrderStatus
+  source?: StoreOrderSource
+  payment_method?: StoreOrder['payment_method']
+  /** Customer name, phone (4+ digits) or the start of the order `ref`. */
+  query?: string
+  /** ISO 8601 date-time: only orders changed after it — the incremental sync cursor. */
+  updated_after?: string
 }
 
 /** `GET /contacts` filters. `email` is exact and case-insensitive; `phone` accepts any format and matches a Brazilian mobile with or without the ninth digit (API 1.11). */
@@ -383,6 +405,8 @@ export interface StoreSummary {
   url: string | null
   product_count: number
   order_count: number
+  /** ISO 4217 code of the store prices. (API 1.19) */
+  currency: string
 }
 
 export interface StoreProductVariant {
@@ -513,14 +537,21 @@ export interface StoreOrderItem {
   total_cents: number
 }
 
-export type StoreOrderSource = 'storefront' | 'whatsapp_catalog' | 'manual' | 'flow' | 'ai_agent'
+/** `manual` = an agent in the dashboard; `api` = `createStoreOrder` (API 1.19). */
+export type StoreOrderSource =
+  | 'storefront'
+  | 'whatsapp_catalog'
+  | 'manual'
+  | 'flow'
+  | 'ai_agent'
+  | 'api'
 
 export interface StoreOrder {
   uuid: string
   /** Short human reference (first 8 chars of the uuid) shown to the customer. */
   ref: string
   status: StoreOrderStatus
-  /** Where the order was placed: storefront checkout or the native WhatsApp catalog. */
+  /** Where the order was placed. */
   source: StoreOrderSource
   /** Provider-side id for orders that originated outside the storefront (WhatsApp catalog order message id). */
   provider_order_id: string | null
@@ -542,11 +573,50 @@ export interface StoreOrder {
   shipping_name: string | null
   shipping_cents: number
   total_cents: number
+  /** ISO 4217 code of every `*_cents` value, snapshotted at creation. (API 1.19) */
+  currency: string
   /** `catalog` = order from the native WhatsApp catalog (payment arranged in chat). */
   payment_method: 'pix' | 'link' | 'on_delivery' | 'catalog' | 'checkout'
+  /** Statuses `updateStoreOrderStatus` accepts from the current one; empty when final. (API 1.19) */
+  allowed_transitions: Exclude<StoreOrderStatus, 'novo'>[]
   notes: string | null
   created_at: string | null
   updated_at: string | null
+}
+
+export interface StoreShippingOption {
+  uuid: string
+  name: string
+  price_cents: number
+  /** The storefront asks for an address with this option; `createStoreOrder` does not take one — use `notes`. */
+  requires_address: boolean
+  position: number
+}
+
+export interface StoreShippingOptionList {
+  data: StoreShippingOption[]
+  /** Shipping is free when the order subtotal reaches this value; null without free shipping. */
+  meta: { free_shipping_from_cents: number | null }
+}
+
+/** Body of `createStoreOrder` — a sale closed outside the storefront. (API 1.19) */
+export interface StoreOrderCreate {
+  customer_name: string
+  /** With a leading `+` it is E.164; without it, a national number of the company country. */
+  customer_phone: string
+  /** 1–50 items; `variant_uuid` is required when the product has variants. */
+  items: { product_uuid: string; variant_uuid?: string | null; quantity: number }[]
+  shipping_option_uuid?: string | null
+  payment_method: 'pix' | 'link' | 'on_delivery'
+  notes?: string | null
+  /** Already paid: the order goes novo → confirmado → pago in the same request. */
+  mark_paid?: boolean
+}
+
+export interface StoreOrderCreateResult {
+  order: StoreOrder
+  /** True when the Idempotency-Key was already used with the same body: same order, no side effect. */
+  replayed: boolean
 }
 
 export type StoreBatchResultItem =
@@ -579,6 +649,7 @@ export type WebhookEventType =
   | 'conversation.updated'
   | 'flow.execution.updated'
   | 'order.created'
+  | 'order.status.updated'
   | 'webhook.test'
 
 /**
@@ -699,7 +770,11 @@ export interface FlowExecutionUpdatedData {
   error: { code: string; message: string | null } | null
 }
 
-/** A store order was created — storefront checkout or native WhatsApp catalog. */
+/**
+ * A store order was created, from any source. `status` is the status when the
+ * event was built. Events are not ordered: upsert by `order_uuid` and compare
+ * `updated_at`.
+ */
 export interface OrderCreatedData extends WebhookContactRefs {
   order_uuid: string
   ref: string
@@ -715,9 +790,19 @@ export interface OrderCreatedData extends WebhookContactRefs {
   shipping_name: string | null
   shipping_cents: number
   total_cents: number
-  payment_method: string
+  /** ISO 4217 (API 1.19). */
+  currency: string
+  payment_method: StoreOrder['payment_method']
   notes: string | null
   created_at: string | null
+  updated_at?: string | null
+}
+
+/** A store order changed status (API 1.19); same shape as `order.created` plus `previous_status`. */
+export interface OrderStatusUpdatedData extends OrderCreatedData {
+  status: StoreOrderStatus
+  /** Status before the change; a chained confirmation (novo → confirmado → pago) is one event from `novo`. */
+  previous_status: StoreOrderStatus
 }
 
 export interface WebhookTestData {
@@ -758,6 +843,10 @@ export type FlowExecutionUpdatedEvent = WebhookEnvelope<
   FlowExecutionUpdatedData
 >
 export type OrderCreatedEvent = WebhookEnvelope<'order.created', OrderCreatedData>
+export type OrderStatusUpdatedEvent = WebhookEnvelope<
+  'order.status.updated',
+  OrderStatusUpdatedData
+>
 export type WebhookTestEvent = WebhookEnvelope<'webhook.test', WebhookTestData>
 
 /** Discriminated on `type` — narrow it and `data` narrows with it. */
@@ -771,6 +860,7 @@ export type WazapiWebhookEvent =
   | ConversationUpdatedEvent
   | FlowExecutionUpdatedEvent
   | OrderCreatedEvent
+  | OrderStatusUpdatedEvent
   | WebhookTestEvent
 
 export interface DiscountRules {

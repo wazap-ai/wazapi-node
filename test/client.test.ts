@@ -283,3 +283,57 @@ test('coupon and policy methods preserve explicit financial input and optimistic
   assert.equal(seen[1].method, 'PUT')
   assert.equal(seen[1].body.version, 0)
 })
+
+test('creates a store order with the idempotency key and reports replays (API 1.19)', async () => {
+  const seen: { url: string; method?: string; key: string | null; body: unknown }[] = []
+  let calls = 0
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      const headers = new Headers(init.headers)
+      seen.push({
+        url,
+        method: init.method,
+        key: headers.get('Idempotency-Key'),
+        body: init.body ? JSON.parse(String(init.body)) : null,
+      })
+      if (url.endsWith('/store/shipping-options'))
+        return json({ data: [{ uuid: 'ship-1', name: 'Motoboy', price_cents: 1000, requires_address: true, position: 0 }], meta: { free_shipping_from_cents: 20000 } })
+      if (url.includes('/store/orders?'))
+        return json({ data: [], meta: { next_cursor: null } })
+      calls += 1
+      return json(
+        { data: { uuid: 'order-1', source: 'api', status: 'pago', currency: 'BRL', allowed_transitions: ['entregue', 'cancelado'] } },
+        { status: 201, headers: { 'content-type': 'application/json', ...(calls > 1 ? { 'Idempotent-Replayed': 'true' } : {}) } }
+      )
+    }),
+  })
+
+  const options = await client.listStoreShippingOptions()
+  assert.equal(options.data[0].requires_address, true)
+  assert.equal(options.meta.free_shipping_from_cents, 20000)
+
+  const input = {
+    customer_name: 'Maria',
+    customer_phone: '+5511999990000',
+    items: [{ product_uuid: 'prod-1', quantity: 2 }],
+    payment_method: 'pix' as const,
+    mark_paid: true,
+  }
+  const first = await client.createStoreOrder(input, 'erp-1847')
+  const again = await client.createStoreOrder(input, 'erp-1847')
+  assert.equal(first.order.source, 'api')
+  assert.deepEqual(first.order.allowed_transitions, ['entregue', 'cancelado'])
+  assert.equal(first.replayed, false)
+  assert.equal(again.replayed, true)
+  const post = seen.find((s) => s.method === 'POST')!
+  assert.match(post.url, /\/store\/orders$/)
+  assert.equal(post.key, 'erp-1847')
+  assert.deepEqual(post.body, input)
+
+  await client.listStoreOrders({ source: 'api', updated_after: '2026-09-29T12:00:00Z' })
+  const list = seen.at(-1)!.url
+  assert.match(list, /source=api/)
+  assert.match(list, /updated_after=2026-09-29T12%3A00%3A00Z/)
+})

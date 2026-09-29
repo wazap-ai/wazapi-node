@@ -224,7 +224,35 @@ const { data: orders } = await wazapi.listStoreOrders({ status: 'novo' })
 await wazapi.updateStoreOrderStatus(orders[0].uuid, 'confirmado')
 ```
 
-New orders also arrive as the `order.created` webhook event.
+New orders also arrive as the `order.created` webhook event, and every status
+change as `order.status.updated` (API 1.19). The two are not ordered: upsert by
+`order_uuid` and compare `updated_at`.
+
+### Recording a sale from your system (API 1.19)
+
+`createStoreOrder` needs the `store:orders` scope, which `store:write` does not
+grant: the order runs the store automation, so the buyer may receive WhatsApp
+messages. Prices come from the catalog and stock is reserved. Pass your own
+order id as the idempotency key so a retry never creates a second order.
+
+```ts
+const { data: shipping } = await wazapi.listStoreShippingOptions()
+const { order, replayed } = await wazapi.createStoreOrder(
+  {
+    customer_name: 'Maria Souza',
+    customer_phone: '+5511999990000',
+    items: [{ product_uuid: product.uuid, quantity: 2 }],
+    shipping_option_uuid: shipping[0]?.uuid,
+    payment_method: 'pix',
+    mark_paid: true,
+  },
+  'erp-order-1847'
+)
+// order.source === 'api', order.currency === 'BRL'
+
+// Incremental sync of everything that changed since the last run
+const changed = await wazapi.listStoreOrders({ updated_after: lastSync })
+```
 
 ## Webhooks
 
@@ -307,9 +335,9 @@ new WazapiClient({
 - `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`
 - `sendMessage(input, idempotencyKey?)`, `sendText(...)`, `sendTemplate(...)`
 - `getStore()`, `listStoreProducts(params)`, `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, patch)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(products)`, `listStoreCategories()`
-- `listStoreOrders(params)`, `getStoreOrder(uuid)`, `updateStoreOrderStatus(uuid, status)`
+- `listStoreOrders(params)` (filters `status`, `source`, `payment_method`, `query`, `updated_after`), `getStoreOrder(uuid)`, `updateStoreOrderStatus(uuid, status)`, `createStoreOrder(input, idempotencyKey?)`, `listStoreShippingOptions()` (API 1.19)
 - `getOperation(uuid)`, `waitForOperation(uuid, options?)`
-- `listStoreProducts(params)` (filter `external_id`, API 1.14), `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, input)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(items)` (matches by `import_handle`, else by `external_id` since API 1.16), `listStoreCategories(params?)`, `createStoreCategory(input)`, `updateStoreCategory(uuid, input)`, `deleteStoreCategory(uuid)` (API 1.15), `listStoreOrders(params)`
+- `listStoreProducts(params)` (filter `external_id`, API 1.14; `category_uuid` and `active`, API 1.19), `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, input)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(items)` (matches by `import_handle`, else by `external_id` since API 1.16), `listStoreCategories(params?)`, `createStoreCategory(input)`, `updateStoreCategory(uuid, input)`, `deleteStoreCategory(uuid)` (API 1.15), `listStoreOrders(params)`
 
 See the OpenAPI contract at `https://wazapi.io/api/openapi/v1.json` for the full
 schema.
