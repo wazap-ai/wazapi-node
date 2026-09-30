@@ -373,3 +373,53 @@ test('lists, creates and updates CRM stages with external_id (API 1.20)', async 
     { call: 'PATCH https://example.test/api/v1/crm/stages/s1', body: { external_id: null } },
   ])
 })
+
+test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', async () => {
+  const calls: Array<{ call: string; body?: unknown }> = []
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push({
+        call: `${init.method} ${url}`,
+        body: init.body ? JSON.parse(String(init.body)) : undefined,
+      })
+      if (init.method === 'DELETE') return new Response(null, { status: 204 })
+      if (url.endsWith('/crm/stage-order')) return json({ data: [] })
+      if (init.method === 'GET' && url.includes('?'))
+        return json({ data: [{ uuid: 'o1' }], meta: { next_cursor: null } })
+      return json({ data: { uuid: 'o1', external_id: 'deal-7' } })
+    }),
+  })
+  await client.deleteCrmStage('s1', 's2')
+  await client.reorderCrmStages('g1', ['s2', 's3', 'won', 'lost'])
+  const page = await client.listCrmOpportunities({
+    external_id: 'deal-7',
+    updated_after: '2026-09-30T12:00:00Z',
+    include_archived: true,
+  })
+  assert.equal(page.data[0].uuid, 'o1')
+  const created = await client.createCrmOpportunity({
+    group_uuid: 'g1',
+    contact_external_id: 'cli-42',
+    title: 'Plano anual',
+    external_id: 'deal-7',
+    assigned_user_external_id: 'rep-9',
+  })
+  assert.equal(created.external_id, 'deal-7')
+  await client.updateCrmOpportunity('o1', { stage_external_id: 'won', version: 2 })
+  await client.archiveCrmOpportunity('o1')
+  assert.deepEqual(
+    calls.map((c) => c.call),
+    [
+      'DELETE https://example.test/api/v1/crm/stages/s1?replacement_stage_uuid=s2',
+      'PUT https://example.test/api/v1/crm/stage-order',
+      'GET https://example.test/api/v1/crm/opportunities?external_id=deal-7&updated_after=2026-09-30T12%3A00%3A00Z&include_archived=true',
+      'POST https://example.test/api/v1/crm/opportunities',
+      'PATCH https://example.test/api/v1/crm/opportunities/o1',
+      'DELETE https://example.test/api/v1/crm/opportunities/o1',
+    ]
+  )
+  assert.deepEqual(calls[1].body, { group_uuid: 'g1', stage_uuids: ['s2', 's3', 'won', 'lost'] })
+  assert.deepEqual(calls[4].body, { stage_external_id: 'won', version: 2 })
+})

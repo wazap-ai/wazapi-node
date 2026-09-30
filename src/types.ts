@@ -565,6 +565,100 @@ export interface CrmStageWrite {
 /** Partial update: an omitted field keeps its value, `external_id: null` clears it. */
 export type CrmStagePatch = Partial<Omit<CrmStageWrite, 'group_uuid'>>
 
+/** A CRM opportunity (deal). (API 1.21) */
+export interface CrmOpportunity {
+  uuid: string
+  title: string
+  /** Value in cents of `currency`. */
+  value_cents: number
+  currency: string
+  notes: string | null
+  /** Why it was lost; set when moved to a `lost` stage. */
+  outcome_reason: string | null
+  due_at: string | null
+  /** Set when the opportunity enters a Won or Lost stage. */
+  closed_at: string | null
+  /** Set when archived; archived ones only come with `include_archived` or by uuid. */
+  archived_at: string | null
+  /** Your system's id. Unique per company among non-archived opportunities. */
+  external_id: string | null
+  /** Optimistic lock: send it back on update to reject a write over someone else's change. */
+  version: number
+  stage: { uuid: string; name: string; kind: CrmStageKind; external_id: string | null }
+  group: { uuid: string; name: string }
+  /** `external_id` is the id your integration linked with `upsertContactByExternalId`. */
+  contact: { uuid: string; name: string | null; phone: string | null; external_id: string | null }
+  /** `external_id` is the person's id in your system (Settings → Users). */
+  assignee: { uuid: string; name: string; email: string; external_id: string | null } | null
+  created_at: string
+  updated_at: string | null
+}
+
+export interface ListCrmOpportunitiesParams {
+  after?: string
+  limit?: number
+  group_uuid?: string
+  stage_uuid?: string
+  contact_uuid?: string
+  /** The contact your integration linked with this id. */
+  contact_external_id?: string
+  /** Exact match on the opportunity `external_id`. */
+  external_id?: string
+  /**
+   * ISO 8601 date-time: only opportunities changed after it. Every change (edit,
+   * stage move, archive) updates `updated_at`, so store the time a sync starts
+   * and pass it next time together with `include_archived`.
+   */
+  updated_after?: string
+  /** Also return archived opportunities. */
+  include_archived?: boolean
+}
+
+interface CrmOpportunityFields {
+  /** A stage of the same board. Unknown or from another board: `422 invalid_stage`. */
+  stage_uuid?: string
+  /** Alternative to `stage_uuid`: the stage by the `external_id` you gave it on this board. */
+  stage_external_id?: string
+  contact_uuid?: string
+  /** Alternative to `contact_uuid`: the id this integration linked with `upsertContactByExternalId`. */
+  contact_external_id?: string
+  /** 2 to 180 characters. */
+  title?: string
+  value_cents?: number
+  /** `2026-10-15` (São Paulo time) or an ISO date-time; `null` clears it. */
+  due_at?: string | null
+  notes?: string | null
+  /** Unique per company among non-archived opportunities (`422 opportunity_external_id_taken`); `null` clears it. */
+  external_id?: string | null
+  /**
+   * The responsible team member by the external id set in Settings → Users;
+   * `null` removes the assignee. Must belong to the board's group (`422 invalid_assignee`).
+   */
+  assigned_user_external_id?: string | null
+  /** Alternative to `assigned_user_external_id`: the member by e-mail. */
+  assigned_user_email?: string | null
+}
+
+/**
+ * Send `contact_uuid` or `contact_external_id`. Without a stage the opportunity
+ * starts in the board's first open stage.
+ */
+export interface CrmOpportunityWrite extends CrmOpportunityFields {
+  /** The board: `group.uuid` from `listCrmStages()`. */
+  group_uuid: string
+  title: string
+}
+
+/**
+ * Partial update. A stage moves the opportunity to the end of that stage; Won/Lost
+ * close it and Lost needs `outcome_reason`.
+ */
+export interface CrmOpportunityPatch extends CrmOpportunityFields {
+  outcome_reason?: string | null
+  /** The `version` you read; a newer one answers `409 stale_opportunity`. */
+  version?: number
+}
+
 export type StoreOrderStatus = 'novo' | 'confirmado' | 'pago' | 'entregue' | 'cancelado'
 
 export interface StoreOrderItem {
