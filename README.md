@@ -336,6 +336,7 @@ new WazapiClient({
 - `sendMessage(input, idempotencyKey?)`, `sendText(...)`, `sendTemplate(...)`
 - `getStore()`, `listStoreProducts(params)`, `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, patch)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(products)`, `listStoreCategories()`
 - `listStoreOrders(params)` (filters `status`, `source`, `payment_method`, `query`, `updated_after`), `getStoreOrder(uuid)`, `updateStoreOrderStatus(uuid, status)`, `createStoreOrder(input, idempotencyKey?)`, `listStoreShippingOptions()` (API 1.19)
+- `listCrmStages(params?)` (filters `group_uuid`, `external_id`), `createCrmStage(input)`, `updateCrmStage(uuid, patch)` — CRM stages with your system's `external_id` (API 1.20; scopes `crm:read` / `crm:write`)
 - `getOperation(uuid)`, `waitForOperation(uuid, options?)`
 - `listStoreProducts(params)` (filter `external_id`, API 1.14; `category_uuid` and `active`, API 1.19), `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, input)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(items)` (matches by `import_handle`, else by `external_id` since API 1.16), `listStoreCategories(params?)`, `createStoreCategory(input)`, `updateStoreCategory(uuid, input)`, `deleteStoreCategory(uuid)` (API 1.15), `listStoreOrders(params)`
 
