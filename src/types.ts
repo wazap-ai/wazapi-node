@@ -790,6 +790,10 @@ export type WebhookEventType =
   | 'flow.execution.updated'
   | 'order.created'
   | 'order.status.updated'
+  | 'crm.opportunity.created'
+  | 'crm.opportunity.updated'
+  | 'crm.opportunity.stage_changed'
+  | 'crm.opportunity.archived'
   | 'webhook.test'
 
 /**
@@ -989,6 +993,43 @@ export type OrderStatusUpdatedEvent = WebhookEnvelope<
 >
 export type WebhookTestEvent = WebhookEnvelope<'webhook.test', WebhookTestData>
 
+/**
+ * Payload of the `crm.opportunity.*` events (API 1.22, opt-in per webhook).
+ * `opportunity.contact.external_id` is your integration's contact id.
+ */
+export interface CrmOpportunityEventData {
+  opportunity: CrmOpportunity
+  /** Only on `crm.opportunity.stage_changed`: the stage it left. */
+  previous_stage?: {
+    uuid: string
+    name: string
+    kind: CrmStageKind
+    external_id: string | null
+  } | null
+  /**
+   * `api` when the change came through the Public API — compare
+   * `origin_integration_uuid` with yours to skip the echo of your own write.
+   */
+  origin: 'api' | 'wazapi'
+  origin_integration_uuid: string | null
+}
+export type CrmOpportunityCreatedEvent = WebhookEnvelope<
+  'crm.opportunity.created',
+  CrmOpportunityEventData
+>
+export type CrmOpportunityUpdatedEvent = WebhookEnvelope<
+  'crm.opportunity.updated',
+  CrmOpportunityEventData
+>
+export type CrmOpportunityStageChangedEvent = WebhookEnvelope<
+  'crm.opportunity.stage_changed',
+  CrmOpportunityEventData
+>
+export type CrmOpportunityArchivedEvent = WebhookEnvelope<
+  'crm.opportunity.archived',
+  CrmOpportunityEventData
+>
+
 /** Discriminated on `type` — narrow it and `data` narrows with it. */
 export type WazapiWebhookEvent =
   | MessageReceivedEvent
@@ -1001,6 +1042,10 @@ export type WazapiWebhookEvent =
   | FlowExecutionUpdatedEvent
   | OrderCreatedEvent
   | OrderStatusUpdatedEvent
+  | CrmOpportunityCreatedEvent
+  | CrmOpportunityUpdatedEvent
+  | CrmOpportunityStageChangedEvent
+  | CrmOpportunityArchivedEvent
   | WebhookTestEvent
 
 export interface DiscountRules {
