@@ -393,13 +393,18 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
   })
   await client.deleteCrmStage('s1', 's2')
   await client.reorderCrmStages('g1', ['s2', 's3', 'won', 'lost'])
-  const page = await client.listCrmOpportunities({ external_id: 'deal-7' })
+  const page = await client.listCrmOpportunities({
+    external_id: 'deal-7',
+    updated_after: '2026-09-30T12:00:00Z',
+    include_archived: true,
+  })
   assert.equal(page.data[0].uuid, 'o1')
   const created = await client.createCrmOpportunity({
     group_uuid: 'g1',
     contact_external_id: 'cli-42',
     title: 'Plano anual',
     external_id: 'deal-7',
+    assigned_user_external_id: 'rep-9',
   })
   assert.equal(created.external_id, 'deal-7')
   await client.updateCrmOpportunity('o1', { stage_external_id: 'won', version: 2 })
@@ -409,7 +414,7 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
     [
       'DELETE https://example.test/api/v1/crm/stages/s1?replacement_stage_uuid=s2',
       'PUT https://example.test/api/v1/crm/stage-order',
-      'GET https://example.test/api/v1/crm/opportunities?external_id=deal-7',
+      'GET https://example.test/api/v1/crm/opportunities?external_id=deal-7&updated_after=2026-09-30T12%3A00%3A00Z&include_archived=true',
       'POST https://example.test/api/v1/crm/opportunities',
       'PATCH https://example.test/api/v1/crm/opportunities/o1',
       'DELETE https://example.test/api/v1/crm/opportunities/o1',
