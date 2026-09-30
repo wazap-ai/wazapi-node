@@ -34,6 +34,10 @@ import type {
   StoreProductListParams,
   StoreCategoryWrite,
   StoreCategoryPatch,
+  CrmStage,
+  CrmStageListParams,
+  CrmStageWrite,
+  CrmStagePatch,
 } from './types.js'
 
 export interface WazapiClientOptions {
@@ -329,6 +333,29 @@ export class WazapiClient {
   /** Deletes the category; its products are kept and become uncategorised. (API 1.15) */
   async deleteStoreCategory(uuid: string): Promise<void> {
     await this.request<null>('DELETE', `/store/categories/${encode(uuid)}`)
+  }
+
+  /** Stages of every CRM board (or of `group_uuid`), in board order. Requires `crm:read`. (API 1.20) */
+  async listCrmStages(params: CrmStageListParams = {}): Promise<CrmStage[]> {
+    const body = await this.request<Envelope<CrmStage[]>>(
+      'GET',
+      this.withQuery('/crm/stages', params)
+    )
+    return body.data
+  }
+
+  /** Adds an `open` stage before Won/Lost; send `external_id` to link it to your system. Requires `crm:write`. (API 1.20) */
+  async createCrmStage(input: CrmStageWrite): Promise<CrmStage> {
+    const body = await this.request<Envelope<CrmStage>>('POST', '/crm/stages', { body: input })
+    return body.data
+  }
+
+  /** Partial update of a stage, Won/Lost included. Requires `crm:write`. (API 1.20) */
+  async updateCrmStage(uuid: string, input: CrmStagePatch): Promise<CrmStage> {
+    const body = await this.request<Envelope<CrmStage>>('PATCH', `/crm/stages/${encode(uuid)}`, {
+      body: input,
+    })
+    return body.data
   }
 
   /**

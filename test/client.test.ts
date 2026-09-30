@@ -337,3 +337,39 @@ test('creates a store order with the idempotency key and reports replays (API 1.
   assert.match(list, /source=api/)
   assert.match(list, /updated_after=2026-09-29T12%3A00%3A00Z/)
 })
+
+test('lists, creates and updates CRM stages with external_id (API 1.20)', async () => {
+  const calls: Array<{ call: string; body?: unknown }> = []
+  const stage = {
+    uuid: 's1',
+    name: 'Demo',
+    kind: 'open',
+    color: '#64748b',
+    external_id: 'stg-10',
+    group: { uuid: 'g1', name: 'Comercial' },
+  }
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push({
+        call: `${init.method} ${url}`,
+        body: init.body ? JSON.parse(String(init.body)) : undefined,
+      })
+      if (init.method === 'GET') return json({ data: [stage] })
+      return json({ data: stage }, { status: init.method === 'POST' ? 201 : 200 })
+    }),
+  })
+  const [found] = await client.listCrmStages({ external_id: 'stg-10' })
+  assert.equal(found.external_id, 'stg-10')
+  await client.createCrmStage({ group_uuid: 'g1', name: 'Demo', external_id: 'stg-10' })
+  await client.updateCrmStage('s1', { external_id: null })
+  assert.deepEqual(calls, [
+    { call: 'GET https://example.test/api/v1/crm/stages?external_id=stg-10', body: undefined },
+    {
+      call: 'POST https://example.test/api/v1/crm/stages',
+      body: { group_uuid: 'g1', name: 'Demo', external_id: 'stg-10' },
+    },
+    { call: 'PATCH https://example.test/api/v1/crm/stages/s1', body: { external_id: null } },
+  ])
+})

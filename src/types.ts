@@ -19,6 +19,10 @@ export type PublicApiScope =
   | 'store:orders'
   | 'store:coupons'
   | 'store:discounts'
+  /** List CRM stages (API 1.20). */
+  | 'crm:read'
+  /** Create and edit CRM stages (API 1.20). */
+  | 'crm:write'
 
 export interface PaginationMeta {
   next_cursor: string | null
@@ -518,6 +522,48 @@ export interface StoreCategoryWrite {
 }
 
 export type StoreCategoryPatch = Partial<StoreCategoryWrite>
+
+export type CrmStageKind = 'open' | 'won' | 'lost'
+
+/** A stage of a CRM board. A board is a Wazapi group, identified by `group.uuid`. (API 1.20) */
+export interface CrmStage {
+  uuid: string
+  name: string
+  /** `won` and `lost` close every board; stages created through the API are `open`. */
+  kind: CrmStageKind
+  /** Hex color, e.g. `#64748b`. */
+  color: string
+  /**
+   * The stage's id in your own system. Unique per board when set; the same id
+   * may repeat on different boards.
+   */
+  external_id: string | null
+  group: { uuid: string; name: string }
+}
+
+export interface CrmStageListParams {
+  /** Only the stages of this board. Unknown uuid: `404 group_not_found`. */
+  group_uuid?: string
+  /** Exact match. Without `group_uuid` it may return one stage per board. */
+  external_id?: string
+}
+
+export interface CrmStageWrite {
+  /** The board to add the stage to: `group.uuid` from `listCrmStages()`. */
+  group_uuid: string
+  /** 2 to 80 characters. */
+  name: string
+  /** Hex color. Defaults to `#64748b`. */
+  color?: string
+  /**
+   * Your system's id for this stage (up to 120 characters). Unique on the
+   * board, otherwise `422 stage_external_id_taken`; `null` clears it.
+   */
+  external_id?: string | null
+}
+
+/** Partial update: an omitted field keeps its value, `external_id: null` clears it. */
+export type CrmStagePatch = Partial<Omit<CrmStageWrite, 'group_uuid'>>
 
 export type StoreOrderStatus = 'novo' | 'confirmado' | 'pago' | 'entregue' | 'cancelado'
 
