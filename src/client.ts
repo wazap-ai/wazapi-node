@@ -38,6 +38,10 @@ import type {
   CrmStageListParams,
   CrmStageWrite,
   CrmStagePatch,
+  CrmOpportunity,
+  CrmOpportunityWrite,
+  CrmOpportunityPatch,
+  ListCrmOpportunitiesParams,
 } from './types.js'
 
 export interface WazapiClientOptions {
@@ -356,6 +360,65 @@ export class WazapiClient {
       body: input,
     })
     return body.data
+  }
+
+  /**
+   * Deletes an open stage. When it holds opportunities, `replacementStageUuid`
+   * (a stage of the same board) receives them. Requires `crm:write`. (API 1.21)
+   */
+  async deleteCrmStage(uuid: string, replacementStageUuid?: string): Promise<void> {
+    await this.request<null>(
+      'DELETE',
+      this.withQuery(`/crm/stages/${encode(uuid)}`, {
+        replacement_stage_uuid: replacementStageUuid,
+      })
+    )
+  }
+
+  /** Sets the full stage order of a board; Won and Lost stay last. Returns the stages in order. (API 1.21) */
+  async reorderCrmStages(groupUuid: string, stageUuids: string[]): Promise<CrmStage[]> {
+    const body = await this.request<Envelope<CrmStage[]>>('PUT', '/crm/stage-order', {
+      body: { group_uuid: groupUuid, stage_uuids: stageUuids },
+    })
+    return body.data
+  }
+
+  /** Non-archived opportunities, oldest first. Requires `crm:read`. (API 1.21) */
+  listCrmOpportunities(
+    params: ListCrmOpportunitiesParams = {}
+  ): Promise<Paginated<CrmOpportunity>> {
+    return this.request('GET', this.withQuery('/crm/opportunities', params))
+  }
+
+  async getCrmOpportunity(uuid: string): Promise<CrmOpportunity> {
+    const body = await this.request<Envelope<CrmOpportunity>>(
+      'GET',
+      `/crm/opportunities/${encode(uuid)}`
+    )
+    return body.data
+  }
+
+  /** Creates an opportunity in an open stage. Requires `crm:write`. (API 1.21) */
+  async createCrmOpportunity(input: CrmOpportunityWrite): Promise<CrmOpportunity> {
+    const body = await this.request<Envelope<CrmOpportunity>>('POST', '/crm/opportunities', {
+      body: input,
+    })
+    return body.data
+  }
+
+  /** Partial update; a stage moves (and Won/Lost close) the opportunity. (API 1.21) */
+  async updateCrmOpportunity(uuid: string, input: CrmOpportunityPatch): Promise<CrmOpportunity> {
+    const body = await this.request<Envelope<CrmOpportunity>>(
+      'PATCH',
+      `/crm/opportunities/${encode(uuid)}`,
+      { body: input }
+    )
+    return body.data
+  }
+
+  /** Archives the opportunity (no permanent deletion); its `external_id` can be reused. (API 1.21) */
+  async archiveCrmOpportunity(uuid: string): Promise<void> {
+    await this.request<null>('DELETE', `/crm/opportunities/${encode(uuid)}`)
   }
 
   /**
