@@ -228,6 +228,38 @@ New orders also arrive as the `order.created` webhook event, and every status
 change as `order.status.updated` (API 1.19). The two are not ordered: upsert by
 `order_uuid` and compare `updated_at`.
 
+### CRM with your own ids (API 1.20–1.22)
+
+Stages and opportunities take your system's `external_id`, and writes accept
+`stage_external_id`, `contact_external_id` and `assigned_user_external_id`
+instead of Wazapi uuids. Scopes: `crm:read` / `crm:write`.
+
+```ts
+await wazapi.createCrmOpportunity({
+  group_uuid: boardUuid,
+  contact_external_id: 'cli-42',
+  stage_external_id: 'qualified',
+  assigned_user_external_id: 'rep-9',
+  title: 'Annual plan',
+  value_cents: 120000,
+  external_id: 'deal-7',
+})
+
+// Incremental sync: archived ones included, so deletions reach you too
+const since = lastSyncStartedAt
+const page = await wazapi.listCrmOpportunities({ updated_after: since, include_archived: true })
+```
+
+The `crm.opportunity.created`, `.updated`, `.stage_changed` and `.archived`
+webhook events (API 1.22, opt-in per webhook) carry the opportunity as
+`getCrmOpportunity` returns it. Skip the echo of your own API writes:
+
+```ts
+if (event.type.startsWith('crm.opportunity.') && 'origin' in event.data) {
+  if (event.data.origin === 'api' && event.data.origin_integration_uuid === myIntegrationUuid) return
+}
+```
+
 ### Recording a sale from your system (API 1.19)
 
 `createStoreOrder` needs the `store:orders` scope, which `store:write` does not
