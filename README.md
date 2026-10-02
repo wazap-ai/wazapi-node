@@ -428,3 +428,10 @@ await client.updateInboxResponseSettings({ unansweredMode: 'team_reply', overdue
 const settings = await client.getInboxResponseSettings()
 await client.updateInboxResponseSettings({ unansweredMode: settings.unansweredMode, overdueMinutes: null })
 ```
+### Ownerless conversation fallback (API 1.33; SDK 0.25)
+
+Use getOwnerlessFallback() to read the default group, optional WhatsApp/Instagram/Messenger overrides and inactive-group warnings. updateOwnerlessFallback(patch) preserves omitted fields; null disables the default or clears an override. Only active groups from the token's company can be selected. Requires contacts:read/write plus settings.general for the integration creator.
+
+applyOwnerlessFallback() is a read-only preview by default. Review its count and list before explicitly calling applyOwnerlessFallback({dryRun:false}). Eligible open/pending conversations have no user/group, at least one actual inbound and no active flow. Applying uses the normal group queue/distribution (including balanced_daily), ownerless_fallback history, system webhooks and one internal note; it sends no message to the person. New events use the same policy after flow termination or completed inbound routing. No periodic scan.
+
+This draft does not include the separate SDK 0.24 / ORG-129 change; preserve both additions when integrating that draft.

@@ -2,6 +2,7 @@ import { WazapiError } from './error.js'
 import type {
   InboxResponseSettings, TeamReplyRecalculationInput, TeamReplyRecalculationResult,
   AiSummarySettings, AiSummaryCosts,
+  OwnerlessFallbackSettings,OwnerlessFallbackPatch,OwnerlessFallbackApplication,
   StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
   AcceptedResult,
   Channel,
@@ -129,6 +130,18 @@ export class WazapiClient {
     return body.data
   }
 
+  /** Requires contacts:read plus settings.general for the token creator. */
+  async getOwnerlessFallback(): Promise<OwnerlessFallbackSettings> {
+    return (await this.request<Envelope<OwnerlessFallbackSettings>>('GET','/settings/ownerless-fallback')).data
+  }
+  /** Omitted fields preserve; null disables the default or clears a channel override. */
+  async updateOwnerlessFallback(input:OwnerlessFallbackPatch): Promise<OwnerlessFallbackSettings> {
+    return (await this.request<Envelope<OwnerlessFallbackSettings>>('PATCH','/settings/ownerless-fallback',{body:input})).data
+  }
+  /** Read-only preview by default. false explicitly assigns eligible current stock. */
+  async applyOwnerlessFallback(input:{dryRun?:boolean}={}): Promise<OwnerlessFallbackApplication> {
+    return (await this.request<Envelope<OwnerlessFallbackApplication>>('POST','/settings/ownerless-fallback/apply',{body:{...input,dryRun:input.dryRun??true}})).data
+  }
   // ---- Contacts ---------------------------------------------------------
 
   listContacts(params: ListContactsParams = {}): Promise<Paginated<Contact>> {

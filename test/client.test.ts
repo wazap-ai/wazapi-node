@@ -477,3 +477,20 @@ test('company response settings read and PUT preserve omission and explicit null
     { method: 'PUT', body: { unansweredMode: 'last_message', overdueMinutes: null } },
   ])
 })
+
+test('ownerless fallback mirrors GET/PATCH contracts and preserves nullable override',async()=>{
+ const seen: {url:string;method:string;body:unknown}[]=[]
+ const config={defaultGroupUuid:'00000000-0000-4000-8000-000000000001',channels:{whatsapp:null,instagram:null,messenger:null},groups:[],warnings:[]}
+ const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{seen.push({url,method:init.method!,body:init.body?JSON.parse(String(init.body)):undefined});return json({data:config})})})
+ assert.deepEqual(await client.getOwnerlessFallback(),config)
+ await client.updateOwnerlessFallback({channels:{whatsapp:null}})
+ assert.equal(seen[0].method,'GET');assert.equal(seen[0].url,'https://example.test/api/v1/settings/ownerless-fallback')
+ assert.equal(seen[1].method,'PATCH');assert.deepEqual(seen[1].body,{channels:{whatsapp:null}})
+})
+test('ownerless application sends true by default and applies only explicit false',async()=>{
+ const seen:unknown[]=[]
+ const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{assert.equal(url,'https://example.test/api/v1/settings/ownerless-fallback/apply');assert.equal(init.method,'POST');const input=JSON.parse(String(init.body));seen.push(input);return json({data:{dryRun:input.dryRun,total:1,applicable:1,applied:input.dryRun?0:1,skipped:0,items:[]}})})})
+ assert.equal((await client.applyOwnerlessFallback()).applied,0)
+ assert.equal((await client.applyOwnerlessFallback({dryRun:false})).applied,1)
+ assert.deepEqual(seen,[{dryRun:true},{dryRun:false}])
+})
