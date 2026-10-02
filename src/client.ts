@@ -1,5 +1,6 @@
 import { WazapiError } from './error.js'
 import type {
+  InboxResponseSettings, TeamReplyRecalculationInput, TeamReplyRecalculationResult,
   StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
   AcceptedResult,
   Channel,
@@ -186,6 +187,17 @@ export class WazapiClient {
     idempotencyKey?: string
   ): Promise<AcceptedResult> {
     return this.accept('POST', `/flows/${encode(flowUuid)}/executions`, input, idempotencyKey)
+  }
+
+  async getInboxResponseSettings(): Promise<InboxResponseSettings> {
+    return (await this.request<Envelope<InboxResponseSettings>>('GET', '/inbox-response-settings')).data
+  }
+  async updateInboxResponseSettings(input: InboxResponseSettings): Promise<InboxResponseSettings> {
+    return (await this.request<Envelope<InboxResponseSettings>>('PUT', '/inbox-response-settings', { body: input })).data
+  }
+  /** No implicit apply: dryRun is required. Follow nextCursor until null. Requires contacts:write/settings.general. */
+  async recalculateTeamReply(input: TeamReplyRecalculationInput): Promise<TeamReplyRecalculationResult> {
+    return (await this.request<Envelope<TeamReplyRecalculationResult>>('POST', '/inbox-response-settings/recalculate', { body: input })).data
   }
 
   // ---- Conversations ----------------------------------------------------
