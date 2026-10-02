@@ -396,3 +396,9 @@ version when updating a coupon or policy (version 0 creates a policy). Archive c
 than deleting them. Orders expose immutable `discount_cents` and `discount`; item `net_cents`
 is the amount after its allocated discount. A reserved use counts toward coupon limits;
 confirmed payment consumes it. Refunds do not automatically restore a use.
+
+### AI usage and cost (draft API 1.32 / SDK 0.24)
+
+Requires the read-only scope ai_agents:read. await client.getAiAgentUsage({ days: 7, agent_uuid: optionalAgentUuid }) returns company-local daily rows for that agent, or all agents when UUID is omitted. days is 1–90 including today.
+
+Cost uses catalog tariffs in fractional USD cents, not the provider invoice. Classified input/cache counters are nullable: old rows are unclassified, never assumed to have zero cache hits. Transport failures can have unobservable spend. No AI call, customer content or conversation mutation. This draft must follow the app deployment; do not publish yet.
