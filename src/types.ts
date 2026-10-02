@@ -335,7 +335,20 @@ export interface Recipient {
  * token. With several connected channels the request fails synchronously with
  * `422 channel_required` — discover the value with `listChannels()`.
  */
+/** A file UUID in the token company library. Audio cannot have a caption. */
+export interface MediaSendContent {
+  media_uuid: string
+  caption?: string
+}
+
 export type SendMessageInput =
+  | {
+      channel_uuid?: string
+      recipient: Recipient
+      type: 'media'
+      content: MediaSendContent
+      replyToMessageUuid?: string
+    }
   | {
       channel_uuid?: string
       recipient: Recipient

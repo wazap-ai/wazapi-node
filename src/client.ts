@@ -18,6 +18,7 @@ import type {
   OperationStatus,
   Paginated,
   SendMessageInput,
+  MediaSendContent,
   StoreBatchResult,
   StoreCategory,
   StoreOrder,
@@ -267,6 +268,23 @@ export class WazapiClient {
   ): Promise<AcceptedResult> {
     return this.sendMessage(
       { ...channelField(channelUuid), recipient: { phone }, type: 'template', content: template },
+      idempotencyKey
+    )
+  }
+
+  /** Library media send (API 1.31). Poll the operation before sending follow-up text. */
+  sendMedia(
+    channelUuid: string | null,
+    phone: string,
+    content: MediaSendContent,
+    idempotencyKey?: string,
+    replyToMessageUuid?: string
+  ): Promise<AcceptedResult> {
+    return this.sendMessage(
+      {
+        ...channelField(channelUuid), recipient: { phone }, type: 'media', content,
+        ...(replyToMessageUuid ? { replyToMessageUuid } : {}),
+      },
       idempotencyKey
     )
   }

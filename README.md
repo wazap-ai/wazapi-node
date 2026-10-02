@@ -400,3 +400,6 @@ confirmed payment consumes it. Refunds do not automatically restore a use.
 ### Team reply (API 1.29 draft)
 
 `getInboxResponseSettings()` and `updateInboxResponseSettings({unansweredMode: "team_reply"})` expose the inbox mode. `recalculateTeamReply({dryRun: true, limit: 100})` previews one page; follow `nextCursor`. Apply requires explicit `dryRun: false` and the company in `team_reply`. Only the wait marker changes. Historical `unknown_preserved` rows retain their marker. Requires contacts:write and settings.general. This prerelease is unpublished.
+### Library media with captions (API 1.31, draft)
+
+Use client.sendMedia(channelUuidOrNull, phone, { media_uuid, caption? }, idempotencyKey?, replyToMessageUuid?). The file belongs to the token company library. WhatsApp image/video/document carry caption in the same message (up to 1024 characters). Audio rejects a nonempty caption; wait for the operation to succeed before sending text. The 24-hour window and blocked contacts are unchanged. This prerelease accompanies ORG-121; it must not be published before the matching app release.
