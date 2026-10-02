@@ -5,6 +5,7 @@ import type {
   OwnerlessFallbackSettings,OwnerlessFallbackPatch,OwnerlessFallbackApplication,
   MessageReactionResult,
   StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
+  AiAgentUsage, AiAgentUsageParams,
   AcceptedResult,
   Channel,
   Contact,
@@ -110,6 +111,10 @@ export class WazapiClient {
   }
   async getAiSummaryCosts(): Promise<AiSummaryCosts> {
     return (await this.request<Envelope<AiSummaryCosts>>('GET', '/ai-summaries/costs')).data
+  /** Read only: requires ai_agents:read. Does not execute AI. */
+  async getAiAgentUsage(params: AiAgentUsageParams = {}): Promise<AiAgentUsage> {
+    const body = await this.request<Envelope<AiAgentUsage>>('GET', this.withQuery('/ai-agents/usage', params))
+    return body.data
   }
 
   // ---- Channels ---------------------------------------------------------

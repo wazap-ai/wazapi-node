@@ -4,6 +4,7 @@
 export type PublicApiScope =
   | 'ai_summaries:read'
   | 'ai_summaries:write'
+  | 'ai_agents:read'
   | 'channels:read'
   | 'contacts:read'
   | 'contacts:write'
@@ -1188,4 +1189,37 @@ export interface MessageReactionResult {
   conversation_uuid:string
   message_uuid:string
   reactions:Array<{emoji:string;actor_user_id:number|null;direction:'inbound'|'outbound'}>
+/** API 1.32: a tariff-based estimate, never the provider invoice. */
+export interface AiAgentUsageDay {
+  date: string
+  agent_uuid: string
+  agent_name: string
+  turns: number
+  prompt_tokens: number
+  output_tokens: number
+  /** These buckets sum classified turns only; null means none captured. */
+  input_tokens: number | null
+  cache_write_tokens: number | null
+  cache_write_1h_tokens: number | null
+  cache_read_tokens: number | null
+  classified_turns: number
+  unclassified_turns: number
+  cost_cents: number
+  classified_cost_cents: number
+  unclassified_cost_cents: number
+}
+export interface AiAgentUsage {
+  currency: 'USD'
+  cost_basis: 'catalog_estimate'
+  timezone: string
+  days: number
+  since: string
+  until: string
+  daily: AiAgentUsageDay[]
+}
+export interface AiAgentUsageParams {
+  /** 1–90 company-local calendar days, including today. Default 7. */
+  days?: number
+  /** Omitted lists all agents with usage in the token's company. */
+  agent_uuid?: string
 }
