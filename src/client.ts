@@ -10,6 +10,8 @@ import type {
   Conversation,
   ConversationDetail,
   Envelope,
+  InboxResponseSettings,
+  InboxResponseSettingsInput,
   ExecuteFlowInput,
   Flow,
   ListContactsParams,
@@ -112,6 +114,18 @@ export class WazapiClient {
 
   async listChannels(): Promise<Channel[]> {
     const body = await this.request<Envelope<Channel[]>>('GET', '/channels')
+    return body.data
+  }
+
+  /** Reads the company's unanswered mode and optional overdue fallback (API 1.31). */
+  async getInboxResponseSettings(): Promise<InboxResponseSettings> {
+    const body = await this.request<Envelope<InboxResponseSettings>>('GET', '/inbox-response-settings')
+    return body.data
+  }
+
+  /** Omit overdueMinutes to preserve it; null disables the company fallback. Group deadlines take precedence. */
+  async updateInboxResponseSettings(input: InboxResponseSettingsInput): Promise<InboxResponseSettings> {
+    const body = await this.request<Envelope<InboxResponseSettings>>('PUT', '/inbox-response-settings', { body: input })
     return body.data
   }
 

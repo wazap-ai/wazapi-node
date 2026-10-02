@@ -424,6 +424,7 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
   assert.deepEqual(calls[4].body, { stage_external_id: 'won', version: 2 })
 })
 
+<<<<<<< HEAD
 test('team reply settings and explicit dry run preserve the API envelope and request', async () => {
   const calls: { url: string; method: string; body: unknown }[] = []
   const expected = { dryRun: true, scanned: 0, changed: 0, waiting: 0, unknown: 0, nextCursor: null, changes: [] }
@@ -454,5 +455,26 @@ test('summary settings and costs use scoped paths and preserve disabled patches'
     ['https://example.test/api/v1/settings/ai-summaries','GET',null],
     ['https://example.test/api/v1/settings/ai-summaries','PATCH',{enabled:false,dailyBudgetUsd:2}],
     ['https://example.test/api/v1/ai-summaries/costs','GET',null],
+=======
+test('company response settings read and PUT preserve omission and explicit null', async () => {
+  const requests: { method: string; body?: any }[] = []
+  const client = new WazapiClient({
+    token: 'waz_api_test', baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      assert.equal(url, 'https://example.test/api/v1/inbox-response-settings')
+      requests.push({ method: init.method!, body: init.body ? JSON.parse(String(init.body)) : undefined })
+      return json({ data: { unansweredMode: 'team_reply', overdueMinutes: 15 } })
+    }),
+  })
+  assert.deepEqual(await client.getInboxResponseSettings(), { unansweredMode: 'team_reply', overdueMinutes: 15 })
+  await client.updateInboxResponseSettings({ unansweredMode: 'team_reply', overdueMinutes: 15 })
+  await client.updateInboxResponseSettings({ unansweredMode: 'human_reply' })
+  await client.updateInboxResponseSettings({ unansweredMode: 'last_message', overdueMinutes: null })
+  assert.deepEqual(requests, [
+    { method: 'GET', body: undefined },
+    { method: 'PUT', body: { unansweredMode: 'team_reply', overdueMinutes: 15 } },
+    { method: 'PUT', body: { unansweredMode: 'human_reply' } },
+    { method: 'PUT', body: { unansweredMode: 'last_message', overdueMinutes: null } },
+>>>>>>> 122c143 (feat: add inbox response settings and overdue threshold SDK)
   ])
 })

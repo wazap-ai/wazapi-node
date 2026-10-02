@@ -397,6 +397,7 @@ than deleting them. Orders expose immutable `discount_cents` and `discount`; ite
 is the amount after its allocated discount. A reserved use counts toward coupon limits;
 confirmed payment consumes it. Refunds do not automatically restore a use.
 
+<<<<<<< HEAD
 ### Team reply (API 1.29 draft)
 
 `getInboxResponseSettings()` and `updateInboxResponseSettings({unansweredMode: "team_reply"})` expose the inbox mode. `recalculateTeamReply({dryRun: true, limit: 100})` previews one page; follow `nextCursor`. Apply requires explicit `dryRun: false` and the company in `team_reply`. Only the wait marker changes. Historical `unknown_preserved` rows retain their marker. Requires contacts:write and settings.general. This prerelease is unpublished.
@@ -414,3 +415,19 @@ by event id; an absent `opportunity.external_id` must not be guessed from the co
 Amounts are USD millionths, not cents. An unconfirmed provider outcome has a null
 cost and retains its reservation. This prerelease is a draft; do not publish it
 before the matching app contract is reviewed and deployed.
+=======
+### Company response settings (API 1.31)
+
+`getInboxResponseSettings()` reads the company's `unansweredMode` and optional
+`overdueMinutes` (integer, 1–10080). `updateInboxResponseSettings(input)` updates
+them using the existing settings permissions. Omit `overdueMinutes` to preserve
+the stored value; pass `null` to disable the company fallback. A group's wait
+alert, then its enabled inactivity deadline, take precedence. Overdue
+conversations remain within unanswered, using the selected mode's clock.
+
+```ts
+await client.updateInboxResponseSettings({ unansweredMode: 'team_reply', overdueMinutes: 15 })
+const settings = await client.getInboxResponseSettings()
+await client.updateInboxResponseSettings({ unansweredMode: settings.unansweredMode, overdueMinutes: null })
+```
+>>>>>>> 122c143 (feat: add inbox response settings and overdue threshold SDK)
