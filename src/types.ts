@@ -1088,3 +1088,13 @@ export interface StoreCouponPage {
   data: StoreCoupon[]
   meta: { currentPage: number; lastPage: number; perPage: number; total: number }
 }
+
+/** Company response settings, matching the API 1.32 contract. */
+export interface InboxResponseSettings {
+  unansweredMode: 'last_message' | 'human_reply' | 'team_reply'
+  /** Optional fallback in minutes (1–10080). Null disables it. Group deadlines win. */
+  overdueMinutes?: number | null
+}
+
+/** Omission preserves the existing threshold; explicit null disables it. */
+export type InboxResponseSettingsInput = InboxResponseSettings

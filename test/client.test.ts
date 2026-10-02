@@ -423,3 +423,25 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
   assert.deepEqual(calls[1].body, { group_uuid: 'g1', stage_uuids: ['s2', 's3', 'won', 'lost'] })
   assert.deepEqual(calls[4].body, { stage_external_id: 'won', version: 2 })
 })
+
+test('company response settings read and PUT preserve omission and explicit null', async () => {
+  const requests: { method: string; body?: any }[] = []
+  const client = new WazapiClient({
+    token: 'waz_api_test', baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      assert.equal(url, 'https://example.test/api/v1/inbox-response-settings')
+      requests.push({ method: init.method!, body: init.body ? JSON.parse(String(init.body)) : undefined })
+      return json({ data: { unansweredMode: 'team_reply', overdueMinutes: 15 } })
+    }),
+  })
+  assert.deepEqual(await client.getInboxResponseSettings(), { unansweredMode: 'team_reply', overdueMinutes: 15 })
+  await client.updateInboxResponseSettings({ unansweredMode: 'team_reply', overdueMinutes: 15 })
+  await client.updateInboxResponseSettings({ unansweredMode: 'human_reply' })
+  await client.updateInboxResponseSettings({ unansweredMode: 'last_message', overdueMinutes: null })
+  assert.deepEqual(requests, [
+    { method: 'GET', body: undefined },
+    { method: 'PUT', body: { unansweredMode: 'team_reply', overdueMinutes: 15 } },
+    { method: 'PUT', body: { unansweredMode: 'human_reply' } },
+    { method: 'PUT', body: { unansweredMode: 'last_message', overdueMinutes: null } },
+  ])
+})
