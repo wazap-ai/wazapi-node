@@ -396,3 +396,18 @@ version when updating a coupon or policy (version 0 creates a policy). Archive c
 than deleting them. Orders expose immutable `discount_cents` and `discount`; item `net_cents`
 is the amount after its allocated discount. A reserved use counts toward coupon limits;
 confirmed payment consumes it. Refunds do not automatically restore a use.
+
+### Company response settings (API 1.31)
+
+`getInboxResponseSettings()` reads the company's `unansweredMode` and optional
+`overdueMinutes` (integer, 1–10080). `updateInboxResponseSettings(input)` updates
+them using the existing settings permissions. Omit `overdueMinutes` to preserve
+the stored value; pass `null` to disable the company fallback. A group's wait
+alert, then its enabled inactivity deadline, take precedence. Overdue
+conversations remain within unanswered, using the selected mode's clock.
+
+```ts
+await client.updateInboxResponseSettings({ unansweredMode: 'team_reply', overdueMinutes: 15 })
+const settings = await client.getInboxResponseSettings()
+await client.updateInboxResponseSettings({ unansweredMode: settings.unansweredMode, overdueMinutes: null })
+```
