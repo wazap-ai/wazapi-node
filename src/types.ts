@@ -2,6 +2,8 @@
 // (openapi/public-api.v1.json). Keep in sync when the contract changes.
 
 export type PublicApiScope =
+  | 'ai_summaries:read'
+  | 'ai_summaries:write'
   | 'channels:read'
   | 'contacts:read'
   | 'contacts:write'
@@ -793,6 +795,7 @@ export interface StoreBatchResult {
 /* ── Webhooks ───────────────────────────────────────────────────────────── */
 
 export type WebhookEventType =
+  | 'conversation.ai_summary'
   | 'message.received'
   | 'message.status.updated'
   | 'message.transcribed'
@@ -1045,6 +1048,7 @@ export type CrmOpportunityArchivedEvent = WebhookEnvelope<
 
 /** Discriminated on `type` — narrow it and `data` narrows with it. */
 export type WazapiWebhookEvent =
+  | ConversationAiSummaryEvent
   | MessageReceivedEvent
   | MessageStatusUpdatedEvent
   | MessageTranscribedEvent
@@ -1110,3 +1114,42 @@ export interface TeamReplyRecalculationResult {
   dryRun: boolean; scanned: number; changed: number; waiting: number; unknown: number; nextCursor: string | null
   changes: { conversationUuid: string; before: string | null; after: string | null; changed: boolean; reason: TeamReplyRecalculationReason }[]
 }
+/** Automatic internal summaries; disabled by default. Draft API 1.29. */
+export type AiSummaryTrigger = 'stage_changed' | 'assigned' | 'resolved' | 'nightly'
+export interface AiSummarySettings {
+  enabled: boolean
+  model: string
+  triggers: AiSummaryTrigger[]
+  minLeadMessages: number
+  minAgentMessages: number
+  maxLines: number
+  maxInputChars: number
+  dailyBudgetUsd: number
+  timezone: string
+  nightlyHour: number
+}
+export interface AiSummaryUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+}
+export interface AiSummaryCosts {
+  days: Array<{day: string; calls: string; costMicros: string | null; reservedMicros: string}>
+  calls: Array<{uuid: string; model: string; status: string; day: string; usage: AiSummaryUsage | null; cost_micros: string | null; reserved_micros: string; error_code: string | null; created_at: string}>
+  budgetAlertDay: string | null
+}
+export interface AiSummaryActor {
+  type: 'user' | 'flow' | 'ai_agent' | 'api' | 'mcp' | 'system'
+  user: {uuid: string; name: string | null} | null
+  integration_uuid: string | null
+}
+export type ConversationAiSummaryEvent = WebhookEnvelope<'conversation.ai_summary', {
+  actor: AiSummaryActor
+  trigger_actor: AiSummaryActor
+  trigger: AiSummaryTrigger
+  conversation: {uuid: string}
+  opportunity: {uuid: string; external_id: string | null} | null
+  summary: {uuid: string; text: string; date: string; model: string; usage: AiSummaryUsage; cost_usd_micros: number; cost_currency: 'USD'; after_message_id: string; through_message_id: string}
+}>
