@@ -117,7 +117,7 @@ export class WazapiClient {
     return body.data
   }
 
-  /** Reads the company's unanswered mode and optional overdue fallback (API 1.31). */
+  /** Reads the company's unanswered mode and optional overdue fallback (API 1.32). */
   async getInboxResponseSettings(): Promise<InboxResponseSettings> {
     const body = await this.request<Envelope<InboxResponseSettings>>('GET', '/inbox-response-settings')
     return body.data

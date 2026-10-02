@@ -1106,9 +1106,7 @@ export interface StoreCouponPage {
   meta: { currentPage: number; lastPage: number; perPage: number; total: number }
 }
 
-<<<<<<< HEAD
 export type UnansweredMode = 'last_message' | 'human_reply' | 'team_reply'
-export interface InboxResponseSettings { unansweredMode: UnansweredMode }
 export interface TeamReplyRecalculationInput { dryRun: boolean; cursor?: string; limit?: number }
 export type TeamReplyRecalculationReason = 'recorded' | 'never_team' | 'answered_or_no_inbound' | 'ai_handoff' | 'inbound_with_person' | 'timeout_no_return' | 'unknown_preserved'
 export interface TeamReplyRecalculationResult {
@@ -1154,8 +1152,7 @@ export type ConversationAiSummaryEvent = WebhookEnvelope<'conversation.ai_summar
   opportunity: {uuid: string; external_id: string | null} | null
   summary: {uuid: string; text: string; date: string; model: string; usage: AiSummaryUsage; cost_usd_micros: number; cost_currency: 'USD'; after_message_id: string; through_message_id: string}
 }>
-=======
-/** Company response settings, matching the API 1.31 contract. */
+/** Company response settings, matching the API 1.32 contract. */
 export interface InboxResponseSettings {
   unansweredMode: 'last_message' | 'human_reply' | 'team_reply'
   /** Optional fallback in minutes (1–10080). Null disables it. Group deadlines win. */
@@ -1164,4 +1161,3 @@ export interface InboxResponseSettings {
 
 /** Omission preserves the existing threshold; explicit null disables it. */
 export type InboxResponseSettingsInput = InboxResponseSettings
->>>>>>> 122c143 (feat: add inbox response settings and overdue threshold SDK)
