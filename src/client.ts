@@ -1,6 +1,7 @@
 import { WazapiError } from './error.js'
 import type {
   InboxResponseSettings, TeamReplyRecalculationInput, TeamReplyRecalculationResult,
+  AiSummarySettings, AiSummaryCosts,
   StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
   AcceptedResult,
   Channel,
@@ -93,6 +94,18 @@ export class WazapiClient {
     this.timeoutMs = options.timeoutMs ?? 30_000
     this.newIdempotencyKey =
       options.idempotencyKeyFactory ?? (() => globalThis.crypto.randomUUID())
+  }
+
+  /** Read defaults without enabling or generating anything. */
+  async getAiSummarySettings(): Promise<AiSummarySettings> {
+    return (await this.request<Envelope<AiSummarySettings>>('GET', '/settings/ai-summaries')).data
+  }
+  /** Explicit write scope required; enabling may incur future model charges. */
+  async updateAiSummarySettings(input: Partial<AiSummarySettings>): Promise<AiSummarySettings> {
+    return (await this.request<Envelope<AiSummarySettings>>('PATCH', '/settings/ai-summaries', {body:input})).data
+  }
+  async getAiSummaryCosts(): Promise<AiSummaryCosts> {
+    return (await this.request<Envelope<AiSummaryCosts>>('GET', '/ai-summaries/costs')).data
   }
 
   // ---- Channels ---------------------------------------------------------

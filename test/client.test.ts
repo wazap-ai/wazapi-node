@@ -440,3 +440,19 @@ test('team reply settings and explicit dry run preserve the API envelope and req
   assert.deepEqual(calls[2].body, {dryRun:true,limit:25})
   assert.equal(calls[2].url, 'https://example.test/api/v1/inbox-response-settings/recalculate')
 })
+
+test('summary settings and costs use scoped paths and preserve disabled patches', async () => {
+  const seen: Array<[string,string,unknown]> = []
+  const client = new WazapiClient({token:'test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{
+    seen.push([url,init.method??'GET',init.body?JSON.parse(String(init.body)):null])
+    return json({data:url.endsWith('/costs')?{days:[],calls:[],budgetAlertDay:null}:{enabled:false,dailyBudgetUsd:2}})
+  })})
+  assert.equal((await client.getAiSummarySettings()).enabled,false)
+  assert.equal((await client.updateAiSummarySettings({enabled:false,dailyBudgetUsd:2})).dailyBudgetUsd,2)
+  assert.deepEqual((await client.getAiSummaryCosts()).calls,[])
+  assert.deepEqual(seen,[
+    ['https://example.test/api/v1/settings/ai-summaries','GET',null],
+    ['https://example.test/api/v1/settings/ai-summaries','PATCH',{enabled:false,dailyBudgetUsd:2}],
+    ['https://example.test/api/v1/ai-summaries/costs','GET',null],
+  ])
+})

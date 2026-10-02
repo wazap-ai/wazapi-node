@@ -403,3 +403,14 @@ confirmed payment consumes it. Refunds do not automatically restore a use.
 ### Library media with captions (API 1.31, draft)
 
 Use client.sendMedia(channelUuidOrNull, phone, { media_uuid, caption? }, idempotencyKey?, replyToMessageUuid?). The file belongs to the token company library. WhatsApp image/video/document carry caption in the same message (up to 1024 characters). Audio rejects a nonempty caption; wait for the operation to succeed before sending text. The 24-hour window and blocked contacts are unchanged. This prerelease accompanies ORG-121; it must not be published before the matching app release.
+
+## Automatic conversation summaries (draft API 1.29)
+
+`getAiSummarySettings()`, `updateAiSummarySettings(patch)` and `getAiSummaryCosts()` use
+`ai_summaries:read` / `ai_summaries:write`. Defaults remain disabled. Enabling is an
+explicit opt-in to internal notes, model charges and `conversation.ai_summary` events.
+The event is typed as `ConversationAiSummaryEvent` in the webhook union. Deduplicate
+by event id; an absent `opportunity.external_id` must not be guessed from the contact.
+Amounts are USD millionths, not cents. An unconfirmed provider outcome has a null
+cost and retains its reservation. This prerelease is a draft; do not publish it
+before the matching app contract is reviewed and deployed.
