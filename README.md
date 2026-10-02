@@ -397,7 +397,7 @@ than deleting them. Orders expose immutable `discount_cents` and `discount`; ite
 is the amount after its allocated discount. A reserved use counts toward coupon limits;
 confirmed payment consumes it. Refunds do not automatically restore a use.
 
-### Company response settings (API 1.31)
+### Company response settings (API 1.32)
 
 `getInboxResponseSettings()` reads the company's `unansweredMode` and optional
 `overdueMinutes` (integer, 1–10080). `updateInboxResponseSettings(input)` updates
