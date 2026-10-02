@@ -1088,3 +1088,25 @@ export interface StoreCouponPage {
   data: StoreCoupon[]
   meta: { currentPage: number; lastPage: number; perPage: number; total: number }
 }
+
+/** Ownerless conversation routing settings, API 1.33. */
+export type OwnerlessProvider = 'whatsapp' | 'instagram' | 'messenger'
+export interface OwnerlessFallbackPatch {
+ defaultGroupUuid?: string | null
+ channels?: Partial<Record<OwnerlessProvider,string|null>>
+}
+export interface OwnerlessFallbackSettings {
+ defaultGroupUuid: string | null
+ channels: Record<OwnerlessProvider,string|null>
+ groups: {uuid:string;name:string}[]
+ warnings: {groupUuid:string;name:string|null;reason:'inactive_group'|'invalid_group'}[]
+}
+export interface OwnerlessFallbackApplication {
+ dryRun:boolean
+ total:number
+ applicable:number
+ applied:number
+ skipped:number
+ items:{conversationUuid:string;channel:string;groupUuid:string|null;groupName:string|null;reason:string}[]
+}
+export type DistributionOrigin='queue'|'distribution'|'transfer'|'manual'|'flow'|'ai'|'ownerless_fallback'
