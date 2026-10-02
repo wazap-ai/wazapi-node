@@ -494,3 +494,17 @@ test('ownerless application sends true by default and applies only explicit fals
  assert.equal((await client.applyOwnerlessFallback({dryRun:false})).applied,1)
  assert.deepEqual(seen,[{dryRun:true},{dryRun:false}])
 })
+
+test('reacts synchronously and preserves empty removal and refusal', async()=>{
+  const calls:Array<{url:string;emoji:unknown}>=[]
+  const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{
+    const emoji=JSON.parse(String(init.body)).emoji;calls.push({url,emoji})
+    return json({data:{ok:emoji!=='😢',error:emoji==='😢'?'provider_refused':null,conversation_uuid:'conv',message_uuid:'msg',reactions:[]}})
+  })})
+  assert.equal((await client.reactToMessage('conv','msg','👍')).ok,true)
+  await client.reactToMessage('conv','msg','')
+  await client.reactToMessage('conv','msg',null)
+  assert.equal((await client.reactToMessage('conv','msg','😢')).ok,false)
+  assert.deepEqual(calls.map(x=>x.emoji),['👍','',null,'😢'])
+  assert.ok(calls.every(x=>x.url==='https://example.test/api/v1/conversations/conv/messages/msg/reaction'))
+})

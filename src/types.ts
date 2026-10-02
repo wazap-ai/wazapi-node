@@ -1182,3 +1182,10 @@ export interface OwnerlessFallbackApplication {
  items:{conversationUuid:string;channel:string;groupUuid:string|null;groupName:string|null;reason:string}[]
 }
 export type DistributionOrigin='queue'|'distribution'|'transfer'|'manual'|'flow'|'ai'|'ownerless_fallback'
+export interface MessageReactionResult {
+  ok:boolean
+  error:string|null
+  conversation_uuid:string
+  message_uuid:string
+  reactions:Array<{emoji:string;actor_user_id:number|null;direction:'inbound'|'outbound'}>
+}

@@ -435,3 +435,6 @@ Use getOwnerlessFallback() to read the default group, optional WhatsApp/Instagra
 applyOwnerlessFallback() is a read-only preview by default. Review its count and list before explicitly calling applyOwnerlessFallback({dryRun:false}). Eligible open/pending conversations have no user/group, at least one actual inbound and no active flow. Applying uses the normal group queue/distribution (including balanced_daily), ownerless_fallback history, system webhooks and one internal note; it sends no message to the person. New events use the same policy after flow termination or completed inbound routing. No periodic scan.
 
 This draft does not include the separate SDK 0.24 / ORG-129 change; preserve both additions when integrating that draft.
+### Reagir a uma mensagem (API 1.34.0)
+
+`await client.reactToMessage(conversationUuid, messageUuid, "👍")`. Passe `""` ou `null` para retirar sua reação. Requer `messages:write`, ator ativo com inbox, conversa visível e última mensagem do cliente há menos de 24h. O resultado é síncrono: confira `ok` e `error`; aceitação do provedor não prova entrega. Reação não vazia aceita conta como resposta nos três modos; retirada não reabre espera. Não atribui nem transfere conversa. Pacote candidato: não publicar antes de o endpoint estar no ar.

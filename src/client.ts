@@ -3,6 +3,7 @@ import type {
   InboxResponseSettings, TeamReplyRecalculationInput, TeamReplyRecalculationResult,
   AiSummarySettings, AiSummaryCosts,
   OwnerlessFallbackSettings,OwnerlessFallbackPatch,OwnerlessFallbackApplication,
+  MessageReactionResult,
   StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
   AcceptedResult,
   Channel,
@@ -242,6 +243,14 @@ export class WazapiClient {
   }
 
   // ---- Conversations ----------------------------------------------------
+
+  /** One emoji acknowledges the message; empty string or null removes your reaction. */
+  async reactToMessage(conversationUuid:string,messageUuid:string,emoji:string|null):Promise<MessageReactionResult> {
+    const body=await this.request<Envelope<MessageReactionResult>>('POST',
+      '/conversations/'+encodeURIComponent(conversationUuid)+'/messages/'+encodeURIComponent(messageUuid)+'/reaction',
+      {body:{emoji}})
+    return body.data
+  }
 
   listConversations(params: ListParams = {}): Promise<Paginated<Conversation>> {
     return this.request('GET', this.withQuery('/conversations', params))
