@@ -1088,3 +1088,12 @@ export interface StoreCouponPage {
   data: StoreCoupon[]
   meta: { currentPage: number; lastPage: number; perPage: number; total: number }
 }
+
+export type UnansweredMode = 'last_message' | 'human_reply' | 'team_reply'
+export interface InboxResponseSettings { unansweredMode: UnansweredMode }
+export interface TeamReplyRecalculationInput { dryRun: boolean; cursor?: string; limit?: number }
+export type TeamReplyRecalculationReason = 'recorded' | 'never_team' | 'answered_or_no_inbound' | 'ai_handoff' | 'inbound_with_person' | 'timeout_no_return' | 'unknown_preserved'
+export interface TeamReplyRecalculationResult {
+  dryRun: boolean; scanned: number; changed: number; waiting: number; unknown: number; nextCursor: string | null
+  changes: { conversationUuid: string; before: string | null; after: string | null; changed: boolean; reason: TeamReplyRecalculationReason }[]
+}

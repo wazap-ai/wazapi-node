@@ -423,3 +423,20 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
   assert.deepEqual(calls[1].body, { group_uuid: 'g1', stage_uuids: ['s2', 's3', 'won', 'lost'] })
   assert.deepEqual(calls[4].body, { stage_external_id: 'won', version: 2 })
 })
+
+test('team reply settings and explicit dry run preserve the API envelope and request', async () => {
+  const calls: { url: string; method: string; body: unknown }[] = []
+  const expected = { dryRun: true, scanned: 0, changed: 0, waiting: 0, unknown: 0, nextCursor: null, changes: [] }
+  const client = new WazapiClient({ token: 'waz_api_test', baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push({url, method: init.method!, body: init.body ? JSON.parse(String(init.body)) : null})
+      return json({data: url.endsWith('/recalculate') ? expected : {unansweredMode:'team_reply'}})
+    })
+  })
+  assert.deepEqual(await client.getInboxResponseSettings(), {unansweredMode:'team_reply'})
+  assert.deepEqual(await client.updateInboxResponseSettings({unansweredMode:'team_reply'}), {unansweredMode:'team_reply'})
+  assert.deepEqual(await client.recalculateTeamReply({dryRun:true,limit:25}), expected)
+  assert.deepEqual(calls.map(c=>c.method), ['GET','PUT','POST'])
+  assert.deepEqual(calls[2].body, {dryRun:true,limit:25})
+  assert.equal(calls[2].url, 'https://example.test/api/v1/inbox-response-settings/recalculate')
+})

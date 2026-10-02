@@ -396,3 +396,7 @@ version when updating a coupon or policy (version 0 creates a policy). Archive c
 than deleting them. Orders expose immutable `discount_cents` and `discount`; item `net_cents`
 is the amount after its allocated discount. A reserved use counts toward coupon limits;
 confirmed payment consumes it. Refunds do not automatically restore a use.
+
+### Team reply (API 1.29 draft)
+
+`getInboxResponseSettings()` and `updateInboxResponseSettings({unansweredMode: "team_reply"})` expose the inbox mode. `recalculateTeamReply({dryRun: true, limit: 100})` previews one page; follow `nextCursor`. Apply requires explicit `dryRun: false` and the company in `team_reply`. Only the wait marker changes. Historical `unknown_preserved` rows retain their marker. Requires contacts:write and settings.general. This prerelease is unpublished.
