@@ -396,3 +396,9 @@ version when updating a coupon or policy (version 0 creates a policy). Archive c
 than deleting them. Orders expose immutable `discount_cents` and `discount`; item `net_cents`
 is the amount after its allocated discount. A reserved use counts toward coupon limits;
 confirmed payment consumes it. Refunds do not automatically restore a use.
+
+### Reagir a uma mensagem (API 1.34.0)
+
+`await client.reactToMessage(conversationUuid, messageUuid, "👍")`. Passe `""` ou `null` para retirar sua reação. Requer `messages:write`, ator ativo com inbox, conversa visível e última mensagem do cliente há menos de 24h. O resultado é síncrono: confira `ok` e `error`; aceitação do provedor não prova entrega. Reação não vazia aceita conta como resposta nos três modos; retirada não reabre espera. Não atribui nem transfere conversa. Pacote candidato: não publicar antes de o endpoint estar no ar.
+
+Para o pacote da ORG-144, a aplicação também deve ter a migration `1780000550000_count_human_reactions` aplicada: ela alinha o classificador e a espera de `human_reply`/`team_reply` com a reação aceita. O SDK candidato continua sem publicação; o método e seu payload não mudaram com essa promoção.

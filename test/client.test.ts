@@ -423,3 +423,17 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
   assert.deepEqual(calls[1].body, { group_uuid: 'g1', stage_uuids: ['s2', 's3', 'won', 'lost'] })
   assert.deepEqual(calls[4].body, { stage_external_id: 'won', version: 2 })
 })
+
+test('reacts synchronously and preserves empty removal and refusal', async()=>{
+  const calls:Array<{url:string;emoji:unknown}>=[]
+  const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{
+    const emoji=JSON.parse(String(init.body)).emoji;calls.push({url,emoji})
+    return json({data:{ok:emoji!=='😢',error:emoji==='😢'?'provider_refused':null,conversation_uuid:'conv',message_uuid:'msg',reactions:[]}})
+  })})
+  assert.equal((await client.reactToMessage('conv','msg','👍')).ok,true)
+  await client.reactToMessage('conv','msg','')
+  await client.reactToMessage('conv','msg',null)
+  assert.equal((await client.reactToMessage('conv','msg','😢')).ok,false)
+  assert.deepEqual(calls.map(x=>x.emoji),['👍','',null,'😢'])
+  assert.ok(calls.every(x=>x.url==='https://example.test/api/v1/conversations/conv/messages/msg/reaction'))
+})
