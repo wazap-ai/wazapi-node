@@ -517,3 +517,14 @@ test('reacts synchronously and preserves empty removal and refusal', async()=>{
   assert.deepEqual(calls.map(x=>x.emoji),['👍','',null,'😢'])
   assert.ok(calls.every(x=>x.url==='https://example.test/api/v1/conversations/conv/messages/msg/reaction'))
 })
+
+for (const retired of [true, false]) test('sets channel retirement to ' + retired, async () => {
+  const client = new WazapiClient({ token: 'waz_api_fictitious', baseUrl: 'https://example.test/api/v1', fetch: stubFetch((url, init) => {
+    assert.equal(url, 'https://example.test/api/v1/channels/fictitious%2Fchannel/retirement')
+    assert.equal(init.method, 'PUT')
+    assert.deepEqual(JSON.parse(String(init.body)), { retired })
+    return json({ channelUuid: 'fictitious/channel', isRetired: retired, retiredAt: retired ? '2026-10-03T18:00:00Z' : null, retiredBy: retired ? { uuid: 'fictitious-user', name: 'Fictitious Admin' } : null })
+  }) })
+  const result = await client.setChannelRetired('fictitious/channel', retired)
+  assert.equal(result.isRetired, retired)
+})
