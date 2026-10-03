@@ -49,11 +49,17 @@ export interface ChannelCapabilities {
 
 export interface Channel {
   uuid: string
-  provider: 'whatsapp'
-  display_name: string | null
-  phone_number: string | null
+  provider: "whatsapp" | "instagram" | "messenger"
+  display_name?: string | null
+  phone_number?: string | null
   status: string
-  capabilities: ChannelCapabilities
+  capabilities: { send_text: boolean; send_template: boolean; start_flow: boolean }
+  statusChangedAt: string | null
+  statusReason: string | null
+  statusChangedBy: ChannelActor | null
+  downSince: string | null
+  healthStatus: "healthy" | "degraded" | "critical" | "unknown"
+  accountRejection?: ChannelAccountRejection | null
 }
 
 export interface Contact {
@@ -797,6 +803,8 @@ export interface StoreBatchResult {
 /* ── Webhooks ───────────────────────────────────────────────────────────── */
 
 export type WebhookEventType =
+  | 'channel.status_changed'
+  | 'channel.account_status_changed'
   | 'conversation.ai_summary'
   | 'message.received'
   | 'message.status.updated'
@@ -1229,3 +1237,56 @@ export interface MessageReactionResult {
   message_uuid:string
   reactions:Array<{emoji:string;actor_user_id:number|null;direction:'inbound'|'outbound'}>
 }
+
+export interface ChannelActor {
+  type: "person" | "Meta" | "system"
+  uuid: string | null
+}
+
+export interface ChannelAccountRejection {
+  code: 131042 | 131031 | 368 | 131048
+  reason: string
+  occurredAt: string
+  expiresAt: string
+  active: boolean
+}
+
+export interface ChannelEvent {
+  uuid: string
+  kind: "status_changed" | "inbound_dropped" | "account_rejected" | "account_recovered"
+  type: "direct" | "comment" | "other" | null
+  senderIdentifier: string | null
+  providerEventId: string | null
+  status: string | null
+  previousStatus: string | null
+  reason: string | null
+  actor: ChannelActor
+  occurredAt: string
+  providerOccurredAt: string | null
+  downSince: string | null
+  isMessage: boolean
+}
+
+export interface ChannelEventPage {
+  items: (ChannelEvent)[]
+  nextCursor: string | null
+  retentionDays: 30
+}
+
+export interface ChannelStatusChangedEvent {
+  id: string
+  api_version: "v1"
+  occurred_at: string
+  type: "channel.status_changed"
+  data: { channel_uuid: string; provider: "whatsapp" | "instagram" | "messenger"; status: "connected" | "disconnected" | "critical"; previous_status: string | null; status_changed_at: string; status_reason: string | null; status_changed_by: ChannelActor }
+}
+
+export interface ChannelAccountStatusChangedEvent {
+  id: string
+  api_version: "v1"
+  occurred_at: string
+  type: "channel.account_status_changed"
+  data: { channel_uuid: string; provider: "whatsapp"; status: "account_rejected" | "account_recovered"; code: 131042 | 131031 | 368 | 131048 | null; reason: string; occurred_at: string; actor: ChannelActor; expires_at: string | null }
+}
+
+export interface ListChannelEventsParams { after?: string; limit?: number; kind?: ChannelEvent['kind'] }

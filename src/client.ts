@@ -1,6 +1,7 @@
 import { WazapiError } from './error.js'
 import type {
-  InboxResponseSettings, TeamReplyRecalculationInput, TeamReplyRecalculationResult,
+  TeamReplyRecalculationInput, TeamReplyRecalculationResult,
+  ChannelEventPage, ListChannelEventsParams,
   AiSummarySettings, AiSummaryCosts,
 
   OwnerlessFallbackSettings,OwnerlessFallbackPatch,OwnerlessFallbackApplication,
@@ -153,6 +154,11 @@ export class WazapiClient {
   async applyOwnerlessFallback(input:{dryRun?:boolean}={}): Promise<OwnerlessFallbackApplication> {
     return (await this.request<Envelope<OwnerlessFallbackApplication>>('POST','/settings/ownerless-fallback/apply',{body:{...input,dryRun:input.dryRun??true}})).data
   }
+  /** Read-only channel metadata, newest first; after is the previous nextCursor. */
+  async listChannelEvents(channelUuid: string, params: ListChannelEventsParams = {}): Promise<ChannelEventPage> {
+    return this.request<ChannelEventPage>('GET', this.withQuery('/channels/' + encode(channelUuid) + '/events', params))
+  }
+
   // ---- Contacts ---------------------------------------------------------
 
   listContacts(params: ListContactsParams = {}): Promise<Paginated<Contact>> {
@@ -241,12 +247,6 @@ export class WazapiClient {
     return this.accept('POST', `/flows/${encode(flowUuid)}/executions`, input, idempotencyKey)
   }
 
-  async getInboxResponseSettings(): Promise<InboxResponseSettings> {
-    return (await this.request<Envelope<InboxResponseSettings>>('GET', '/inbox-response-settings')).data
-  }
-  async updateInboxResponseSettings(input: InboxResponseSettings): Promise<InboxResponseSettings> {
-    return (await this.request<Envelope<InboxResponseSettings>>('PUT', '/inbox-response-settings', { body: input })).data
-  }
   /** No implicit apply: dryRun is required. Follow nextCursor until null. Requires contacts:write/settings.general. */
   async recalculateTeamReply(input: TeamReplyRecalculationInput): Promise<TeamReplyRecalculationResult> {
     return (await this.request<Envelope<TeamReplyRecalculationResult>>('POST', '/inbox-response-settings/recalculate', { body: input })).data
