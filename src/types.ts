@@ -3,6 +3,9 @@
 
 export type PublicApiScope =
   | 'ai_agents:read'
+
+  | 'ai_summaries:read'
+  | 'ai_summaries:write'
   | 'channels:read'
   | 'contacts:read'
   | 'contacts:write'
@@ -46,11 +49,17 @@ export interface ChannelCapabilities {
 
 export interface Channel {
   uuid: string
-  provider: 'whatsapp'
-  display_name: string | null
-  phone_number: string | null
+  provider: "whatsapp" | "instagram" | "messenger"
+  display_name?: string | null
+  phone_number?: string | null
   status: string
-  capabilities: ChannelCapabilities
+  capabilities: { send_text: boolean; send_template: boolean; start_flow: boolean }
+  statusChangedAt: string | null
+  statusReason: string | null
+  statusChangedBy: ChannelActor | null
+  downSince: string | null
+  healthStatus: "healthy" | "degraded" | "critical" | "unknown"
+  accountRejection?: ChannelAccountRejection | null
 }
 
 export interface Contact {
@@ -336,7 +345,20 @@ export interface Recipient {
  * token. With several connected channels the request fails synchronously with
  * `422 channel_required` — discover the value with `listChannels()`.
  */
+/** A file UUID in the token company library. Audio cannot have a caption. */
+export interface MediaSendContent {
+  media_uuid: string
+  caption?: string
+}
+
 export type SendMessageInput =
+  | {
+      channel_uuid?: string
+      recipient: Recipient
+      type: 'media'
+      content: MediaSendContent
+      replyToMessageUuid?: string
+    }
   | {
       channel_uuid?: string
       recipient: Recipient
@@ -781,6 +803,9 @@ export interface StoreBatchResult {
 /* ── Webhooks ───────────────────────────────────────────────────────────── */
 
 export type WebhookEventType =
+  | 'channel.status_changed'
+  | 'channel.account_status_changed'
+  | 'conversation.ai_summary'
   | 'message.received'
   | 'message.status.updated'
   | 'message.transcribed'
@@ -1033,6 +1058,7 @@ export type CrmOpportunityArchivedEvent = WebhookEnvelope<
 
 /** Discriminated on `type` — narrow it and `data` narrows with it. */
 export type WazapiWebhookEvent =
+  | ConversationAiSummaryEvent
   | MessageReceivedEvent
   | MessageStatusUpdatedEvent
   | MessageTranscribedEvent
@@ -1124,3 +1150,143 @@ export interface AiAgentUsageParams {
   /** Omitted lists all agents with usage in the token's company. */
   agent_uuid?: string
 }
+
+export type UnansweredMode = 'last_message' | 'human_reply' | 'team_reply'
+export interface TeamReplyRecalculationInput { dryRun: boolean; cursor?: string; limit?: number }
+export type TeamReplyRecalculationReason = 'recorded' | 'never_team' | 'answered_or_no_inbound' | 'ai_handoff' | 'inbound_with_person' | 'timeout_no_return' | 'unknown_preserved'
+export interface TeamReplyRecalculationResult {
+  dryRun: boolean; scanned: number; changed: number; waiting: number; unknown: number; nextCursor: string | null
+  changes: { conversationUuid: string; before: string | null; after: string | null; changed: boolean; reason: TeamReplyRecalculationReason }[]
+}
+/** Automatic internal summaries; disabled by default. Draft API 1.29. */
+export type AiSummaryTrigger = 'stage_changed' | 'assigned' | 'resolved' | 'nightly'
+export interface AiSummarySettings {
+  enabled: boolean
+  model: string
+  triggers: AiSummaryTrigger[]
+  minLeadMessages: number
+  minAgentMessages: number
+  maxLines: number
+  maxInputChars: number
+  dailyBudgetUsd: number
+  timezone: string
+  nightlyHour: number
+}
+export interface AiSummaryUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+}
+export interface AiSummaryCosts {
+  days: Array<{day: string; calls: string; costMicros: string | null; reservedMicros: string}>
+  calls: Array<{uuid: string; model: string; status: string; day: string; usage: AiSummaryUsage | null; cost_micros: string | null; reserved_micros: string; error_code: string | null; created_at: string}>
+  budgetAlertDay: string | null
+}
+export interface AiSummaryActor {
+  type: 'user' | 'flow' | 'ai_agent' | 'api' | 'mcp' | 'system'
+  user: {uuid: string; name: string | null} | null
+  integration_uuid: string | null
+}
+export type ConversationAiSummaryEvent = WebhookEnvelope<'conversation.ai_summary', {
+  actor: AiSummaryActor
+  trigger_actor: AiSummaryActor
+  trigger: AiSummaryTrigger
+  conversation: {uuid: string}
+  opportunity: {uuid: string; external_id: string | null} | null
+  summary: {uuid: string; text: string; date: string; model: string; usage: AiSummaryUsage; cost_usd_micros: number; cost_currency: 'USD'; after_message_id: string; through_message_id: string}
+}>
+
+/** Company response settings, matching the API 1.32 contract. */
+export interface InboxResponseSettings {
+  unansweredMode: 'last_message' | 'human_reply' | 'team_reply'
+  /** Optional fallback in minutes (1–10080). Null disables it. Group deadlines win. */
+  overdueMinutes?: number | null
+}
+
+/** Omission preserves the existing threshold; explicit null disables it. */
+export type InboxResponseSettingsInput = InboxResponseSettings
+
+/** Ownerless conversation routing settings, API 1.33. */
+export type OwnerlessProvider = 'whatsapp' | 'instagram' | 'messenger'
+export interface OwnerlessFallbackPatch {
+ defaultGroupUuid?: string | null
+ channels?: Partial<Record<OwnerlessProvider,string|null>>
+}
+export interface OwnerlessFallbackSettings {
+ defaultGroupUuid: string | null
+ channels: Record<OwnerlessProvider,string|null>
+ groups: {uuid:string;name:string}[]
+ warnings: {groupUuid:string;name:string|null;reason:'inactive_group'|'invalid_group'}[]
+}
+export interface OwnerlessFallbackApplication {
+ dryRun:boolean
+ total:number
+ applicable:number
+ applied:number
+ skipped:number
+ items:{conversationUuid:string;channel:string;groupUuid:string|null;groupName:string|null;reason:string}[]
+}
+export type DistributionOrigin='queue'|'distribution'|'transfer'|'manual'|'flow'|'ai'|'ownerless_fallback'
+
+export interface MessageReactionResult {
+  ok:boolean
+  error:string|null
+  conversation_uuid:string
+  message_uuid:string
+  reactions:Array<{emoji:string;actor_user_id:number|null;direction:'inbound'|'outbound'}>
+}
+
+export interface ChannelActor {
+  type: "person" | "Meta" | "system"
+  uuid: string | null
+}
+
+export interface ChannelAccountRejection {
+  code: 131042 | 131031 | 368 | 131048
+  reason: string
+  occurredAt: string
+  expiresAt: string
+  active: boolean
+}
+
+export interface ChannelEvent {
+  uuid: string
+  kind: "status_changed" | "inbound_dropped" | "account_rejected" | "account_recovered"
+  type: "direct" | "comment" | "other" | null
+  senderIdentifier: string | null
+  providerEventId: string | null
+  status: string | null
+  previousStatus: string | null
+  reason: string | null
+  actor: ChannelActor
+  occurredAt: string
+  providerOccurredAt: string | null
+  downSince: string | null
+  isMessage: boolean
+}
+
+export interface ChannelEventPage {
+  items: (ChannelEvent)[]
+  nextCursor: string | null
+  retentionDays: 30
+}
+
+export interface ChannelStatusChangedEvent {
+  id: string
+  api_version: "v1"
+  occurred_at: string
+  type: "channel.status_changed"
+  data: { channel_uuid: string; provider: "whatsapp" | "instagram" | "messenger"; status: "connected" | "disconnected" | "critical"; previous_status: string | null; status_changed_at: string; status_reason: string | null; status_changed_by: ChannelActor }
+}
+
+export interface ChannelAccountStatusChangedEvent {
+  id: string
+  api_version: "v1"
+  occurred_at: string
+  type: "channel.account_status_changed"
+  data: { channel_uuid: string; provider: "whatsapp"; status: "account_rejected" | "account_recovered"; code: 131042 | 131031 | 368 | 131048 | null; reason: string; occurred_at: string; actor: ChannelActor; expires_at: string | null }
+}
+
+export interface ListChannelEventsParams { after?: string; limit?: number; kind?: ChannelEvent['kind'] }
