@@ -431,3 +431,36 @@ test('AI usage performs GET with scoped filters and preserves unknown cache coun
   })})
   const result=await client.getAiAgentUsage({days:7,agent_uuid:'agent'});assert.deepEqual(result,data);assert.equal(result.daily[0].cache_read_tokens,null)
 })
+
+test('team reply settings and explicit dry run preserve the API envelope and request', async () => {
+  const calls: { url: string; method: string; body: unknown }[] = []
+  const expected = { dryRun: true, scanned: 0, changed: 0, waiting: 0, unknown: 0, nextCursor: null, changes: [] }
+  const client = new WazapiClient({ token: 'waz_api_test', baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push({url, method: init.method!, body: init.body ? JSON.parse(String(init.body)) : null})
+      return json({data: url.endsWith('/recalculate') ? expected : {unansweredMode:'team_reply'}})
+    })
+  })
+  assert.deepEqual(await client.getInboxResponseSettings(), {unansweredMode:'team_reply'})
+  assert.deepEqual(await client.updateInboxResponseSettings({unansweredMode:'team_reply'}), {unansweredMode:'team_reply'})
+  assert.deepEqual(await client.recalculateTeamReply({dryRun:true,limit:25}), expected)
+  assert.deepEqual(calls.map(c=>c.method), ['GET','PUT','POST'])
+  assert.deepEqual(calls[2].body, {dryRun:true,limit:25})
+  assert.equal(calls[2].url, 'https://example.test/api/v1/inbox-response-settings/recalculate')
+})
+
+test('summary settings and costs use scoped paths and preserve disabled patches', async () => {
+  const seen: Array<[string,string,unknown]> = []
+  const client = new WazapiClient({token:'test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{
+    seen.push([url,init.method??'GET',init.body?JSON.parse(String(init.body)):null])
+    return json({data:url.endsWith('/costs')?{days:[],calls:[],budgetAlertDay:null}:{enabled:false,dailyBudgetUsd:2}})
+  })})
+  assert.equal((await client.getAiSummarySettings()).enabled,false)
+  assert.equal((await client.updateAiSummarySettings({enabled:false,dailyBudgetUsd:2})).dailyBudgetUsd,2)
+  assert.deepEqual((await client.getAiSummaryCosts()).calls,[])
+  assert.deepEqual(seen,[
+    ['https://example.test/api/v1/settings/ai-summaries','GET',null],
+    ['https://example.test/api/v1/settings/ai-summaries','PATCH',{enabled:false,dailyBudgetUsd:2}],
+    ['https://example.test/api/v1/ai-summaries/costs','GET',null],
+  ])
+})

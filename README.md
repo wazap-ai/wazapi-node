@@ -402,3 +402,21 @@ confirmed payment consumes it. Refunds do not automatically restore a use.
 Requires the read-only scope ai_agents:read. await client.getAiAgentUsage({ days: 7, agent_uuid: optionalAgentUuid }) returns company-local daily rows for that agent, or all agents when UUID is omitted. days is 1–90 including today.
 
 Cost uses catalog tariffs in fractional USD cents, not the provider invoice. Classified input/cache counters are nullable: old rows are unclassified, never assumed to have zero cache hits. Transport failures can have unobservable spend. No AI call, customer content or conversation mutation. This draft must follow the app deployment; do not publish yet.
+
+### Team reply (API 1.29 draft)
+
+`getInboxResponseSettings()` and `updateInboxResponseSettings({unansweredMode: "team_reply"})` expose the inbox mode. `recalculateTeamReply({dryRun: true, limit: 100})` previews one page; follow `nextCursor`. Apply requires explicit `dryRun: false` and the company in `team_reply`. Only the wait marker changes. Historical `unknown_preserved` rows retain their marker. Requires contacts:write and settings.general. This prerelease is unpublished.
+### Library media with captions (API 1.31, draft)
+
+Use client.sendMedia(channelUuidOrNull, phone, { media_uuid, caption? }, idempotencyKey?, replyToMessageUuid?). The file belongs to the token company library. WhatsApp image/video/document carry caption in the same message (up to 1024 characters). Audio rejects a nonempty caption; wait for the operation to succeed before sending text. The 24-hour window and blocked contacts are unchanged. This prerelease accompanies ORG-121; it must not be published before the matching app release.
+
+## Automatic conversation summaries (draft API 1.29)
+
+`getAiSummarySettings()`, `updateAiSummarySettings(patch)` and `getAiSummaryCosts()` use
+`ai_summaries:read` / `ai_summaries:write`. Defaults remain disabled. Enabling is an
+explicit opt-in to internal notes, model charges and `conversation.ai_summary` events.
+The event is typed as `ConversationAiSummaryEvent` in the webhook union. Deduplicate
+by event id; an absent `opportunity.external_id` must not be guessed from the contact.
+Amounts are USD millionths, not cents. An unconfirmed provider outcome has a null
+cost and retains its reservation. This prerelease is a draft; do not publish it
+before the matching app contract is reviewed and deployed.

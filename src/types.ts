@@ -3,6 +3,9 @@
 
 export type PublicApiScope =
   | 'ai_agents:read'
+
+  | 'ai_summaries:read'
+  | 'ai_summaries:write'
   | 'channels:read'
   | 'contacts:read'
   | 'contacts:write'
@@ -336,7 +339,20 @@ export interface Recipient {
  * token. With several connected channels the request fails synchronously with
  * `422 channel_required` — discover the value with `listChannels()`.
  */
+/** A file UUID in the token company library. Audio cannot have a caption. */
+export interface MediaSendContent {
+  media_uuid: string
+  caption?: string
+}
+
 export type SendMessageInput =
+  | {
+      channel_uuid?: string
+      recipient: Recipient
+      type: 'media'
+      content: MediaSendContent
+      replyToMessageUuid?: string
+    }
   | {
       channel_uuid?: string
       recipient: Recipient
@@ -781,6 +797,7 @@ export interface StoreBatchResult {
 /* ── Webhooks ───────────────────────────────────────────────────────────── */
 
 export type WebhookEventType =
+  | 'conversation.ai_summary'
   | 'message.received'
   | 'message.status.updated'
   | 'message.transcribed'
@@ -1033,6 +1050,7 @@ export type CrmOpportunityArchivedEvent = WebhookEnvelope<
 
 /** Discriminated on `type` — narrow it and `data` narrows with it. */
 export type WazapiWebhookEvent =
+  | ConversationAiSummaryEvent
   | MessageReceivedEvent
   | MessageStatusUpdatedEvent
   | MessageTranscribedEvent
@@ -1124,3 +1142,51 @@ export interface AiAgentUsageParams {
   /** Omitted lists all agents with usage in the token's company. */
   agent_uuid?: string
 }
+
+export type UnansweredMode = 'last_message' | 'human_reply' | 'team_reply'
+export interface InboxResponseSettings { unansweredMode: UnansweredMode }
+export interface TeamReplyRecalculationInput { dryRun: boolean; cursor?: string; limit?: number }
+export type TeamReplyRecalculationReason = 'recorded' | 'never_team' | 'answered_or_no_inbound' | 'ai_handoff' | 'inbound_with_person' | 'timeout_no_return' | 'unknown_preserved'
+export interface TeamReplyRecalculationResult {
+  dryRun: boolean; scanned: number; changed: number; waiting: number; unknown: number; nextCursor: string | null
+  changes: { conversationUuid: string; before: string | null; after: string | null; changed: boolean; reason: TeamReplyRecalculationReason }[]
+}
+/** Automatic internal summaries; disabled by default. Draft API 1.29. */
+export type AiSummaryTrigger = 'stage_changed' | 'assigned' | 'resolved' | 'nightly'
+export interface AiSummarySettings {
+  enabled: boolean
+  model: string
+  triggers: AiSummaryTrigger[]
+  minLeadMessages: number
+  minAgentMessages: number
+  maxLines: number
+  maxInputChars: number
+  dailyBudgetUsd: number
+  timezone: string
+  nightlyHour: number
+}
+export interface AiSummaryUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+}
+export interface AiSummaryCosts {
+  days: Array<{day: string; calls: string; costMicros: string | null; reservedMicros: string}>
+  calls: Array<{uuid: string; model: string; status: string; day: string; usage: AiSummaryUsage | null; cost_micros: string | null; reserved_micros: string; error_code: string | null; created_at: string}>
+  budgetAlertDay: string | null
+}
+export interface AiSummaryActor {
+  type: 'user' | 'flow' | 'ai_agent' | 'api' | 'mcp' | 'system'
+  user: {uuid: string; name: string | null} | null
+  integration_uuid: string | null
+}
+export type ConversationAiSummaryEvent = WebhookEnvelope<'conversation.ai_summary', {
+  actor: AiSummaryActor
+  trigger_actor: AiSummaryActor
+  trigger: AiSummaryTrigger
+  conversation: {uuid: string}
+  opportunity: {uuid: string; external_id: string | null} | null
+  summary: {uuid: string; text: string; date: string; model: string; usage: AiSummaryUsage; cost_usd_micros: number; cost_currency: 'USD'; after_message_id: string; through_message_id: string}
+}>

@@ -1,5 +1,7 @@
 import { WazapiError } from './error.js'
 import type {
+  InboxResponseSettings, TeamReplyRecalculationInput, TeamReplyRecalculationResult,
+  AiSummarySettings, AiSummaryCosts,
   StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
   AiAgentUsage, AiAgentUsageParams,
   AcceptedResult,
@@ -18,6 +20,7 @@ import type {
   OperationStatus,
   Paginated,
   SendMessageInput,
+  MediaSendContent,
   StoreBatchResult,
   StoreCategory,
   StoreOrder,
@@ -98,6 +101,18 @@ export class WazapiClient {
   async getAiAgentUsage(params: AiAgentUsageParams = {}): Promise<AiAgentUsage> {
     const body = await this.request<Envelope<AiAgentUsage>>('GET', this.withQuery('/ai-agents/usage', params))
     return body.data
+  }
+
+  /** Read defaults without enabling or generating anything. */
+  async getAiSummarySettings(): Promise<AiSummarySettings> {
+    return (await this.request<Envelope<AiSummarySettings>>('GET', '/settings/ai-summaries')).data
+  }
+  /** Explicit write scope required; enabling may incur future model charges. */
+  async updateAiSummarySettings(input: Partial<AiSummarySettings>): Promise<AiSummarySettings> {
+    return (await this.request<Envelope<AiSummarySettings>>('PATCH', '/settings/ai-summaries', {body:input})).data
+  }
+  async getAiSummaryCosts(): Promise<AiSummaryCosts> {
+    return (await this.request<Envelope<AiSummaryCosts>>('GET', '/ai-summaries/costs')).data
   }
 
   // ---- Channels ---------------------------------------------------------
@@ -195,6 +210,17 @@ export class WazapiClient {
     return this.accept('POST', `/flows/${encode(flowUuid)}/executions`, input, idempotencyKey)
   }
 
+  async getInboxResponseSettings(): Promise<InboxResponseSettings> {
+    return (await this.request<Envelope<InboxResponseSettings>>('GET', '/inbox-response-settings')).data
+  }
+  async updateInboxResponseSettings(input: InboxResponseSettings): Promise<InboxResponseSettings> {
+    return (await this.request<Envelope<InboxResponseSettings>>('PUT', '/inbox-response-settings', { body: input })).data
+  }
+  /** No implicit apply: dryRun is required. Follow nextCursor until null. Requires contacts:write/settings.general. */
+  async recalculateTeamReply(input: TeamReplyRecalculationInput): Promise<TeamReplyRecalculationResult> {
+    return (await this.request<Envelope<TeamReplyRecalculationResult>>('POST', '/inbox-response-settings/recalculate', { body: input })).data
+  }
+
   // ---- Conversations ----------------------------------------------------
 
   listConversations(params: ListParams = {}): Promise<Paginated<Conversation>> {
@@ -262,6 +288,23 @@ export class WazapiClient {
   ): Promise<AcceptedResult> {
     return this.sendMessage(
       { ...channelField(channelUuid), recipient: { phone }, type: 'template', content: template },
+      idempotencyKey
+    )
+  }
+
+  /** Library media send (API 1.31). Poll the operation before sending follow-up text. */
+  sendMedia(
+    channelUuid: string | null,
+    phone: string,
+    content: MediaSendContent,
+    idempotencyKey?: string,
+    replyToMessageUuid?: string
+  ): Promise<AcceptedResult> {
+    return this.sendMessage(
+      {
+        ...channelField(channelUuid), recipient: { phone }, type: 'media', content,
+        ...(replyToMessageUuid ? { replyToMessageUuid } : {}),
+      },
       idempotencyKey
     )
   }
