@@ -1,6 +1,7 @@
 import { WazapiError } from './error.js'
 import type {
   StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
+  AiDutySettings,
   AcceptedResult,
   Channel,
   Contact,
@@ -91,6 +92,20 @@ export class WazapiClient {
     this.timeoutMs = options.timeoutMs ?? 30_000
     this.newIdempotencyKey =
       options.idempotencyKeyFactory ?? (() => globalThis.crypto.randomUUID())
+  }
+
+  // ---- AI duty ----------------------------------------------------------
+
+  /** Requires ai_agents:read, Business and settings.general. No AI call. */
+  async getAiDutySettings(): Promise<AiDutySettings> {
+    const body = await this.request<Envelope<AiDutySettings>>('GET', '/settings/ai-duty')
+    return body.data
+  }
+
+  /** Replaces all four settings. Enabling permits future AI calls, never contact sends. */
+  async updateAiDutySettings(input: AiDutySettings): Promise<AiDutySettings> {
+    const body = await this.request<Envelope<AiDutySettings>>('PUT', '/settings/ai-duty', { body: input })
+    return body.data
   }
 
   // ---- Channels ---------------------------------------------------------

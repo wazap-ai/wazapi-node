@@ -1,7 +1,18 @@
 // Types mirror the Wazapi Public API v1 OpenAPI contract
 // (openapi/public-api.v1.json). Keep in sync when the contract changes.
 
+export interface AiDutySettings {
+  /** Phase 1 never sends or takes over a conversation. */
+  mode: 'desligado' | 'sombra' | 'nota'
+  agentUuid: string | null
+  channels: 'whatsapp'[]
+  /** Company-local daily reservations, including failed attempts. Default 60. */
+  dailyLimit: number
+}
+
 export type PublicApiScope =
+  | 'ai_agents:read'
+  | 'ai_agents:write'
   | 'channels:read'
   | 'contacts:read'
   | 'contacts:write'

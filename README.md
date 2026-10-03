@@ -9,6 +9,16 @@ managing contacts, templates and the store (products and orders).
 - Automatic `Idempotency-Key` generation for write operations.
 - Built-in polling helper for asynchronous operations.
 
+## AI duty (draft, ORG-170 / API 1.37)
+
+`getAiDutySettings()` reads the company configuration without an AI call.
+`updateAiDutySettings({ mode, agentUuid, channels, dailyLimit })` replaces it.
+Modes are `desligado` (default), `sombra` (private shadow record) and `nota` (internal team note).
+Neither sends to a lead or takes over the conversation. An enabled mode needs an active agent from the same company.
+Phase 1 supports `channels: ['whatsapp']` or `[]`. The company-local daily cap defaults to 60 and counts reserved attempts, including failures.
+GET needs `ai_agents:read`; PUT needs explicit `ai_agents:write`. Both need Business and an active integration actor with `settings.general`.
+This candidate must be integrated with the other package drafts and deployed on the server before publishing the SDK.
+
 ## Install
 
 ```bash
