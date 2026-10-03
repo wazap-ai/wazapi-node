@@ -135,10 +135,39 @@ export type ContactTrackingWrite = Partial<Record<ContactTrackingKey, string>>
  */
 export type ContactTracking = Record<string, string>
 
+/** Optional read fields introduced by ORG-141. Nested configuration keeps camelCase. */
+export interface FlowMonitoringRule {
+  mode: 'default' | 'disabled' | 'start_flow' | 'assign_group'
+  minutes?: number
+  flowUuid?: string | null
+  groupUuid?: string | null
+  fallbackGroupUuid?: string | null
+}
+export interface FlowMonitoringSettings {
+  staleSessionMinutes: number | null
+  staleSessionAction: 'start_flow' | 'assign_group' | null
+  staleSessionFlowUuid: string | null
+  staleSessionGroupUuid: string | null
+  staleSessionFallbackGroupUuid: string | null
+  staleSessionMaxAgeHours: number
+  staleSessionCloseOld: boolean
+}
+export interface EffectiveFlowMonitoringRule {
+  origin: 'flow' | 'caller' | 'company' | 'none'
+  sourceFlowUuid: string | null
+  sourceFlowName: string | null
+  disabled: boolean
+  chainWarning: 'cycle' | 'depth_limit' | null
+  settings: FlowMonitoringSettings | null
+}
+export interface GetFlowParams { flow_session_uuid?: string }
 export interface Flow {
   uuid: string
   name: string
   status: 'draft' | 'active'
+  monitoring_rule?: FlowMonitoringRule | null
+  effective_monitoring_rule?: EffectiveFlowMonitoringRule
+  monitoring_warnings?: string[]
   supported_providers: string[]
   created_at: string | null
   updated_at: string | null

@@ -445,3 +445,7 @@ Para o pacote da ORG-144, a aplicação também deve ter a migration `1780000550
 Requires the read-only scope ai_agents:read. await client.getAiAgentUsage({ days: 7, agent_uuid: optionalAgentUuid }) returns company-local daily rows for that agent, or all agents when UUID is omitted. days is 1–90 including today.
 
 Cost uses catalog tariffs in fractional USD cents, not the provider invoice. Classified input/cache counters are nullable: old rows are unclassified, never assumed to have zero cache hits. Transport failures can have unobservable spend. No AI call, customer content or conversation mutation. This draft must follow the app deployment; do not publish yet.
+
+### Flow monitoring (ORG-141 draft)
+
+Flow reads optionally return monitoring_rule, effective_monitoring_rule and monitoring_warnings. Nested keys keep camelCase; origin is flow, caller, company or none. getFlow(uuid, {flow_session_uuid}) resolves the authenticated company session chain. Without it the flow is evaluated alone. Old servers and clients can omit every new field. This read contract does not enable monitoring. This draft stacks SDK PRs #24–#30 through org141-sdk-dependencies; do not publish before the matching app release.

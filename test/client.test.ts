@@ -516,3 +516,12 @@ test('AI usage performs GET with scoped filters and preserves unknown cache coun
   })})
   const result=await client.getAiAgentUsage({days:7,agent_uuid:'agent'});assert.deepEqual(result,data);assert.equal(result.daily[0].cache_read_tokens,null)
 })
+
+test('optional flow monitoring fields preserve origins and session query without changing old calls', async () => {
+ const urls:string[]=[]
+ const decision={origin:'caller',sourceFlowUuid:'parent',sourceFlowName:'Parent',disabled:false,chainWarning:null,settings:null}
+ const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url)=>{urls.push(url);return json({data:{uuid:'flow',name:'Example',status:'active',supported_providers:['whatsapp'],created_at:null,updated_at:null,monitoring_rule:{mode:'default'},effective_monitoring_rule:decision,monitoring_warnings:[]}})})})
+ assert.deepEqual((await client.getFlow('flow')).effective_monitoring_rule,decision)
+ assert.equal((await client.getFlow('a/b',{flow_session_uuid:'session & chain'})).monitoring_rule?.mode,'default')
+ assert.deepEqual(urls,['https://example.test/api/v1/flows/flow','https://example.test/api/v1/flows/a%2Fb?flow_session_uuid=session+%26+chain'])
+})
