@@ -1189,6 +1189,7 @@ export interface MessageReactionResult {
   conversation_uuid:string
   message_uuid:string
   reactions:Array<{emoji:string;actor_user_id:number|null;direction:'inbound'|'outbound'}>
+}
 /** API 1.32: a tariff-based estimate, never the provider invoice. */
 export interface AiAgentUsageDay {
   date: string

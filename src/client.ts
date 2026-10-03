@@ -1,6 +1,6 @@
 import { WazapiError } from './error.js'
 import type {
-  InboxResponseSettings, TeamReplyRecalculationInput, TeamReplyRecalculationResult,
+  TeamReplyRecalculationInput, TeamReplyRecalculationResult,
   AiSummarySettings, AiSummaryCosts,
   OwnerlessFallbackSettings,OwnerlessFallbackPatch,OwnerlessFallbackApplication,
   MessageReactionResult,
@@ -111,6 +111,7 @@ export class WazapiClient {
   }
   async getAiSummaryCosts(): Promise<AiSummaryCosts> {
     return (await this.request<Envelope<AiSummaryCosts>>('GET', '/ai-summaries/costs')).data
+  }
   /** Read only: requires ai_agents:read. Does not execute AI. */
   async getAiAgentUsage(params: AiAgentUsageParams = {}): Promise<AiAgentUsage> {
     const body = await this.request<Envelope<AiAgentUsage>>('GET', this.withQuery('/ai-agents/usage', params))
@@ -236,12 +237,6 @@ export class WazapiClient {
     return this.accept('POST', `/flows/${encode(flowUuid)}/executions`, input, idempotencyKey)
   }
 
-  async getInboxResponseSettings(): Promise<InboxResponseSettings> {
-    return (await this.request<Envelope<InboxResponseSettings>>('GET', '/inbox-response-settings')).data
-  }
-  async updateInboxResponseSettings(input: InboxResponseSettings): Promise<InboxResponseSettings> {
-    return (await this.request<Envelope<InboxResponseSettings>>('PUT', '/inbox-response-settings', { body: input })).data
-  }
   /** No implicit apply: dryRun is required. Follow nextCursor until null. Requires contacts:write/settings.general. */
   async recalculateTeamReply(input: TeamReplyRecalculationInput): Promise<TeamReplyRecalculationResult> {
     return (await this.request<Envelope<TeamReplyRecalculationResult>>('POST', '/inbox-response-settings/recalculate', { body: input })).data
