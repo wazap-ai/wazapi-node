@@ -423,3 +423,108 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
   assert.deepEqual(calls[1].body, { group_uuid: 'g1', stage_uuids: ['s2', 's3', 'won', 'lost'] })
   assert.deepEqual(calls[4].body, { stage_external_id: 'won', version: 2 })
 })
+
+test('AI usage performs GET with scoped filters and preserves unknown cache counters', async () => {
+  const data={currency:'USD',cost_basis:'catalog_estimate',timezone:'America/Sao_Paulo',days:7,since:'2026-10-01T00:00:00-03:00',until:'2026-10-02T19:00:00-03:00',daily:[{date:'2026-10-01',agent_uuid:'agent',agent_name:'AI',turns:1,prompt_tokens:100,output_tokens:5,input_tokens:null,cache_write_tokens:null,cache_write_1h_tokens:null,cache_read_tokens:null,classified_turns:0,unclassified_turns:1,cost_cents:0.025,classified_cost_cents:0,unclassified_cost_cents:0.025}]}
+  const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{
+    const u=new URL(url);assert.equal(u.pathname,'/api/v1/ai-agents/usage');assert.equal(u.searchParams.get('days'),'7');assert.equal(u.searchParams.get('agent_uuid'),'agent');assert.equal(init.method,'GET');return json({data})
+  })})
+  const result=await client.getAiAgentUsage({days:7,agent_uuid:'agent'});assert.deepEqual(result,data);assert.equal(result.daily[0].cache_read_tokens,null)
+})
+
+test('team reply settings and explicit dry run preserve the API envelope and request', async () => {
+  const calls: { url: string; method: string; body: unknown }[] = []
+  const expected = { dryRun: true, scanned: 0, changed: 0, waiting: 0, unknown: 0, nextCursor: null, changes: [] }
+  const client = new WazapiClient({ token: 'waz_api_test', baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push({url, method: init.method!, body: init.body ? JSON.parse(String(init.body)) : null})
+      return json({data: url.endsWith('/recalculate') ? expected : {unansweredMode:'team_reply'}})
+    })
+  })
+  assert.deepEqual(await client.getInboxResponseSettings(), {unansweredMode:'team_reply'})
+  assert.deepEqual(await client.updateInboxResponseSettings({unansweredMode:'team_reply'}), {unansweredMode:'team_reply'})
+  assert.deepEqual(await client.recalculateTeamReply({dryRun:true,limit:25}), expected)
+  assert.deepEqual(calls.map(c=>c.method), ['GET','PUT','POST'])
+  assert.deepEqual(calls[2].body, {dryRun:true,limit:25})
+  assert.equal(calls[2].url, 'https://example.test/api/v1/inbox-response-settings/recalculate')
+})
+
+test('summary settings and costs use scoped paths and preserve disabled patches', async () => {
+  const seen: Array<[string,string,unknown]> = []
+  const client = new WazapiClient({token:'test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{
+    seen.push([url,init.method??'GET',init.body?JSON.parse(String(init.body)):null])
+    return json({data:url.endsWith('/costs')?{days:[],calls:[],budgetAlertDay:null}:{enabled:false,dailyBudgetUsd:2}})
+  })})
+  assert.equal((await client.getAiSummarySettings()).enabled,false)
+  assert.equal((await client.updateAiSummarySettings({enabled:false,dailyBudgetUsd:2})).dailyBudgetUsd,2)
+  assert.deepEqual((await client.getAiSummaryCosts()).calls,[])
+  assert.deepEqual(seen,[
+    ['https://example.test/api/v1/settings/ai-summaries','GET',null],
+    ['https://example.test/api/v1/settings/ai-summaries','PATCH',{enabled:false,dailyBudgetUsd:2}],
+    ['https://example.test/api/v1/ai-summaries/costs','GET',null],
+  ])
+})
+
+test('company response settings read and PUT preserve omission and explicit null', async () => {
+  const requests: { method: string; body?: any }[] = []
+  const client = new WazapiClient({
+    token: 'waz_api_test', baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      assert.equal(url, 'https://example.test/api/v1/inbox-response-settings')
+      requests.push({ method: init.method!, body: init.body ? JSON.parse(String(init.body)) : undefined })
+      return json({ data: { unansweredMode: 'team_reply', overdueMinutes: 15 } })
+    }),
+  })
+  assert.deepEqual(await client.getInboxResponseSettings(), { unansweredMode: 'team_reply', overdueMinutes: 15 })
+  await client.updateInboxResponseSettings({ unansweredMode: 'team_reply', overdueMinutes: 15 })
+  await client.updateInboxResponseSettings({ unansweredMode: 'human_reply' })
+  await client.updateInboxResponseSettings({ unansweredMode: 'last_message', overdueMinutes: null })
+  assert.deepEqual(requests, [
+    { method: 'GET', body: undefined },
+    { method: 'PUT', body: { unansweredMode: 'team_reply', overdueMinutes: 15 } },
+    { method: 'PUT', body: { unansweredMode: 'human_reply' } },
+    { method: 'PUT', body: { unansweredMode: 'last_message', overdueMinutes: null } },
+  ])
+})
+
+test('ownerless fallback mirrors GET/PATCH contracts and preserves nullable override',async()=>{
+ const seen: {url:string;method:string;body:unknown}[]=[]
+ const config={defaultGroupUuid:'00000000-0000-4000-8000-000000000001',channels:{whatsapp:null,instagram:null,messenger:null},groups:[],warnings:[]}
+ const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{seen.push({url,method:init.method!,body:init.body?JSON.parse(String(init.body)):undefined});return json({data:config})})})
+ assert.deepEqual(await client.getOwnerlessFallback(),config)
+ await client.updateOwnerlessFallback({channels:{whatsapp:null}})
+ assert.equal(seen[0].method,'GET');assert.equal(seen[0].url,'https://example.test/api/v1/settings/ownerless-fallback')
+ assert.equal(seen[1].method,'PATCH');assert.deepEqual(seen[1].body,{channels:{whatsapp:null}})
+})
+test('ownerless application sends true by default and applies only explicit false',async()=>{
+ const seen:unknown[]=[]
+ const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{assert.equal(url,'https://example.test/api/v1/settings/ownerless-fallback/apply');assert.equal(init.method,'POST');const input=JSON.parse(String(init.body));seen.push(input);return json({data:{dryRun:input.dryRun,total:1,applicable:1,applied:input.dryRun?0:1,skipped:0,items:[]}})})})
+ assert.equal((await client.applyOwnerlessFallback()).applied,0)
+ assert.equal((await client.applyOwnerlessFallback({dryRun:false})).applied,1)
+ assert.deepEqual(seen,[{dryRun:true},{dryRun:false}])
+})
+
+test('reacts synchronously and preserves empty removal and refusal', async()=>{
+  const calls:Array<{url:string;emoji:unknown}>=[]
+  const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{
+    const emoji=JSON.parse(String(init.body)).emoji;calls.push({url,emoji})
+    return json({data:{ok:emoji!=='😢',error:emoji==='😢'?'provider_refused':null,conversation_uuid:'conv',message_uuid:'msg',reactions:[]}})
+  })})
+  assert.equal((await client.reactToMessage('conv','msg','👍')).ok,true)
+  await client.reactToMessage('conv','msg','')
+  await client.reactToMessage('conv','msg',null)
+  assert.equal((await client.reactToMessage('conv','msg','😢')).ok,false)
+  assert.deepEqual(calls.map(x=>x.emoji),['👍','',null,'😢'])
+  assert.ok(calls.every(x=>x.url==='https://example.test/api/v1/conversations/conv/messages/msg/reaction'))
+})
+
+for (const retired of [true, false]) test('sets channel retirement to ' + retired, async () => {
+  const client = new WazapiClient({ token: 'waz_api_fictitious', baseUrl: 'https://example.test/api/v1', fetch: stubFetch((url, init) => {
+    assert.equal(url, 'https://example.test/api/v1/channels/fictitious%2Fchannel/retirement')
+    assert.equal(init.method, 'PUT')
+    assert.deepEqual(JSON.parse(String(init.body)), { retired })
+    return json({ channelUuid: 'fictitious/channel', isRetired: retired, retiredAt: retired ? '2026-10-03T18:00:00Z' : null, retiredBy: retired ? { uuid: 'fictitious-user', name: 'Fictitious Admin' } : null })
+  }) })
+  const result = await client.setChannelRetired('fictitious/channel', retired)
+  assert.equal(result.isRetired, retired)
+})

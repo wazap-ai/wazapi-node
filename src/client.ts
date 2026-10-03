@@ -1,13 +1,25 @@
 import { WazapiError } from './error.js'
 import type {
+  TeamReplyRecalculationInput, TeamReplyRecalculationResult,
+  ChannelEventPage, ListChannelEventsParams,
+  AiSummarySettings, AiSummaryCosts,
+
+  OwnerlessFallbackSettings,OwnerlessFallbackPatch,OwnerlessFallbackApplication,
+
+  MessageReactionResult,
   StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
+  AiAgentUsage, AiAgentUsageParams,
+  AiDutySettings,
   AcceptedResult,
   Channel,
+  ChannelRetirementResult,
   Contact,
   ContactWrite,
   Conversation,
   ConversationDetail,
   Envelope,
+  InboxResponseSettings,
+  InboxResponseSettingsInput,
   ExecuteFlowInput,
   Flow,
   ListContactsParams,
@@ -17,6 +29,7 @@ import type {
   OperationStatus,
   Paginated,
   SendMessageInput,
+  MediaSendContent,
   StoreBatchResult,
   StoreCategory,
   StoreOrder,
@@ -93,11 +106,77 @@ export class WazapiClient {
       options.idempotencyKeyFactory ?? (() => globalThis.crypto.randomUUID())
   }
 
+  /** Read only: requires ai_agents:read. Does not execute AI. */
+  async getAiAgentUsage(params: AiAgentUsageParams = {}): Promise<AiAgentUsage> {
+    const body = await this.request<Envelope<AiAgentUsage>>('GET', this.withQuery('/ai-agents/usage', params))
+    return body.data
+  }
+
+  /** Read defaults without enabling or generating anything. */
+  async getAiSummarySettings(): Promise<AiSummarySettings> {
+    return (await this.request<Envelope<AiSummarySettings>>('GET', '/settings/ai-summaries')).data
+  }
+  /** Explicit write scope required; enabling may incur future model charges. */
+  async updateAiSummarySettings(input: Partial<Omit<AiSummarySettings, 'warnings'>>): Promise<AiSummarySettings> {
+    return (await this.request<Envelope<AiSummarySettings>>('PATCH', '/settings/ai-summaries', {body:input})).data
+  }
+  async getAiSummaryCosts(): Promise<AiSummaryCosts> {
+    return (await this.request<Envelope<AiSummaryCosts>>('GET', '/ai-summaries/costs')).data
+  }
+
+  // ---- AI duty ----------------------------------------------------------
+
+  /** Requires ai_agents:read, Business and settings.general. No AI call. */
+  async getAiDutySettings(): Promise<AiDutySettings> {
+    const body = await this.request<Envelope<AiDutySettings>>('GET', '/settings/ai-duty')
+    return body.data
+  }
+
+  /** Replaces all four settings. Enabling permits future AI calls, never contact sends. */
+  async updateAiDutySettings(input: AiDutySettings): Promise<AiDutySettings> {
+    const body = await this.request<Envelope<AiDutySettings>>('PUT', '/settings/ai-duty', { body: input })
+    return body.data
+  }
+
   // ---- Channels ---------------------------------------------------------
 
+  /** Only a current channel administrator can retire a disconnected channel. No message is sent. */
+  async setChannelRetired(channelUuid: string, retired: boolean): Promise<ChannelRetirementResult> {
+    return this.request<ChannelRetirementResult>('PUT', '/channels/' + encode(channelUuid) + '/retirement', { body: { retired } })
+  }
   async listChannels(): Promise<Channel[]> {
     const body = await this.request<Envelope<Channel[]>>('GET', '/channels')
     return body.data
+  }
+
+  /** Reads the company's unanswered mode and optional overdue fallback (API 1.32). */
+  async getInboxResponseSettings(): Promise<InboxResponseSettings> {
+    const body = await this.request<Envelope<InboxResponseSettings>>('GET', '/inbox-response-settings')
+    return body.data
+  }
+
+  /** Omit overdueMinutes to preserve it; null disables the company fallback. Group deadlines take precedence. */
+  async updateInboxResponseSettings(input: InboxResponseSettingsInput): Promise<InboxResponseSettings> {
+    const body = await this.request<Envelope<InboxResponseSettings>>('PUT', '/inbox-response-settings', { body: input })
+    return body.data
+  }
+
+
+  /** Requires contacts:read plus settings.general for the token creator. */
+  async getOwnerlessFallback(): Promise<OwnerlessFallbackSettings> {
+    return (await this.request<Envelope<OwnerlessFallbackSettings>>('GET','/settings/ownerless-fallback')).data
+  }
+  /** Omitted fields preserve; null disables the default or clears a channel override. */
+  async updateOwnerlessFallback(input:OwnerlessFallbackPatch): Promise<OwnerlessFallbackSettings> {
+    return (await this.request<Envelope<OwnerlessFallbackSettings>>('PATCH','/settings/ownerless-fallback',{body:input})).data
+  }
+  /** Read-only preview by default. false explicitly assigns eligible current stock. */
+  async applyOwnerlessFallback(input:{dryRun?:boolean}={}): Promise<OwnerlessFallbackApplication> {
+    return (await this.request<Envelope<OwnerlessFallbackApplication>>('POST','/settings/ownerless-fallback/apply',{body:{...input,dryRun:input.dryRun??true}})).data
+  }
+  /** Read-only channel metadata, newest first; after is the previous nextCursor. */
+  async listChannelEvents(channelUuid: string, params: ListChannelEventsParams = {}): Promise<ChannelEventPage> {
+    return this.request<ChannelEventPage>('GET', this.withQuery('/channels/' + encode(channelUuid) + '/events', params))
   }
 
   // ---- Contacts ---------------------------------------------------------
@@ -188,7 +267,20 @@ export class WazapiClient {
     return this.accept('POST', `/flows/${encode(flowUuid)}/executions`, input, idempotencyKey)
   }
 
+  /** No implicit apply: dryRun is required. Follow nextCursor until null. Requires contacts:write/settings.general. */
+  async recalculateTeamReply(input: TeamReplyRecalculationInput): Promise<TeamReplyRecalculationResult> {
+    return (await this.request<Envelope<TeamReplyRecalculationResult>>('POST', '/inbox-response-settings/recalculate', { body: input })).data
+  }
+
   // ---- Conversations ----------------------------------------------------
+
+  /** One emoji acknowledges the message; empty string or null removes your reaction. */
+  async reactToMessage(conversationUuid:string,messageUuid:string,emoji:string|null):Promise<MessageReactionResult> {
+    const body=await this.request<Envelope<MessageReactionResult>>('POST',
+      '/conversations/'+encodeURIComponent(conversationUuid)+'/messages/'+encodeURIComponent(messageUuid)+'/reaction',
+      {body:{emoji}})
+    return body.data
+  }
 
   listConversations(params: ListParams = {}): Promise<Paginated<Conversation>> {
     return this.request('GET', this.withQuery('/conversations', params))
@@ -255,6 +347,23 @@ export class WazapiClient {
   ): Promise<AcceptedResult> {
     return this.sendMessage(
       { ...channelField(channelUuid), recipient: { phone }, type: 'template', content: template },
+      idempotencyKey
+    )
+  }
+
+  /** Library media send (API 1.31). Poll the operation before sending follow-up text. */
+  sendMedia(
+    channelUuid: string | null,
+    phone: string,
+    content: MediaSendContent,
+    idempotencyKey?: string,
+    replyToMessageUuid?: string
+  ): Promise<AcceptedResult> {
+    return this.sendMessage(
+      {
+        ...channelField(channelUuid), recipient: { phone }, type: 'media', content,
+        ...(replyToMessageUuid ? { replyToMessageUuid } : {}),
+      },
       idempotencyKey
     )
   }
