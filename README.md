@@ -459,3 +459,7 @@ Para o pacote da ORG-144, a aplicação também deve ter a migration `1780000550
 Webhook types `ChannelStatusChangedEvent` and `ChannelAccountStatusChangedEvent` include the actor (person UUID, Meta or system). Account codes 131042/131031/368/131048 represent the account alert; 24-hour notification suppression and expiry are enforced by the core. Template acceptance is not proof of delivery.
 
 This prerelease stacks SDK drafts #24, #25–#27, #28, #29 and #30 locally, with #30 as the PR base. Requires core #430 on master a0d2bc19; do not publish before the future authorized app/Trigger package.
+
+### Channel retirement (API 1.36)
+
+`client.setChannelRetired(channelUuid, true)` retires a disconnected channel; `false` un-retires it. Requires `channels:write` and a current channel administrator as integration creator. `listChannels()` exposes `isRetired`, `retiredAt` and `retiredBy`. No message, reconnect or deletion occurs. Home alerts and new notification emails are suppressed while retired; reconnecting automatically clears retirement. This draft SDK is stacked on the channel-history SDK PR #31.

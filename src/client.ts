@@ -11,6 +11,7 @@ import type {
   AiAgentUsage, AiAgentUsageParams,
   AcceptedResult,
   Channel,
+  ChannelRetirementResult,
   Contact,
   ContactWrite,
   Conversation,
@@ -124,6 +125,10 @@ export class WazapiClient {
 
   // ---- Channels ---------------------------------------------------------
 
+  /** Only a current channel administrator can retire a disconnected channel. No message is sent. */
+  async setChannelRetired(channelUuid: string, retired: boolean): Promise<ChannelRetirementResult> {
+    return this.request<ChannelRetirementResult>('PUT', '/channels/' + encode(channelUuid) + '/retirement', { body: { retired } })
+  }
   async listChannels(): Promise<Channel[]> {
     const body = await this.request<Envelope<Channel[]>>('GET', '/channels')
     return body.data

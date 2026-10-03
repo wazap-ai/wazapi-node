@@ -7,6 +7,7 @@ export type PublicApiScope =
   | 'ai_summaries:read'
   | 'ai_summaries:write'
   | 'channels:read'
+  | 'channels:write'
   | 'contacts:read'
   | 'contacts:write'
   | 'contacts:block'
@@ -47,7 +48,15 @@ export interface ChannelCapabilities {
   start_flow: boolean
 }
 
-export interface Channel {
+export interface ChannelRetirement {
+  isRetired: boolean
+  retiredAt: string | null
+  retiredBy: { uuid: string | null; name: string | null } | null
+}
+export interface ChannelRetirementResult extends ChannelRetirement {
+  channelUuid: string
+}
+export interface Channel extends ChannelRetirement {
   uuid: string
   provider: "whatsapp" | "instagram" | "messenger"
   display_name?: string | null
@@ -1253,8 +1262,8 @@ export interface ChannelAccountRejection {
 
 export interface ChannelEvent {
   uuid: string
-  kind: "status_changed" | "inbound_dropped" | "account_rejected" | "account_recovered"
-  type: "direct" | "comment" | "other" | null
+  kind: "status_changed" | "inbound_dropped" | "account_rejected" | "account_recovered" | "retirement_changed"
+  type: "direct" | "comment" | "other" | "retired" | "unretired" | null
   senderIdentifier: string | null
   providerEventId: string | null
   status: string | null
