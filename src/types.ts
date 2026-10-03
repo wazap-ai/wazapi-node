@@ -1090,7 +1090,7 @@ export interface StoreCouponPage {
   meta: { currentPage: number; lastPage: number; perPage: number; total: number }
 }
 
-/** API 1.32: a tariff-based estimate, never the provider invoice. */
+/** API 1.35: a tariff-based estimate, never the provider invoice. */
 export interface AiAgentUsageDay {
   date: string
   agent_uuid: string

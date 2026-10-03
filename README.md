@@ -397,7 +397,7 @@ than deleting them. Orders expose immutable `discount_cents` and `discount`; ite
 is the amount after its allocated discount. A reserved use counts toward coupon limits;
 confirmed payment consumes it. Refunds do not automatically restore a use.
 
-### AI usage and cost (draft API 1.32 / SDK 0.24)
+### AI usage and cost (draft API 1.35 / SDK 0.27.0-org150.1)
 
 Requires the read-only scope ai_agents:read. await client.getAiAgentUsage({ days: 7, agent_uuid: optionalAgentUuid }) returns company-local daily rows for that agent, or all agents when UUID is omitted. days is 1–90 including today.
 

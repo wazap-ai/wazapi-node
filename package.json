@@ -1,6 +1,6 @@
 {
   "name": "@wazapi/sdk",
-  "version": "0.24.0",
+  "version": "0.27.0-org150.1",
   "description": "Official Node.js SDK for the Wazapi Public API v1",
   "license": "MIT",
   "type": "module",
