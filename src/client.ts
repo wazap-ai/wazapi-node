@@ -1,6 +1,7 @@
 import { WazapiError } from './error.js'
 import type {
   StoreCoupon, StoreCouponInput, StoreCouponPage, AgentDiscountPolicy, AgentDiscountPolicyInput,
+  AiAgentUsage, AiAgentUsageParams,
   AcceptedResult,
   Channel,
   Contact,
@@ -91,6 +92,12 @@ export class WazapiClient {
     this.timeoutMs = options.timeoutMs ?? 30_000
     this.newIdempotencyKey =
       options.idempotencyKeyFactory ?? (() => globalThis.crypto.randomUUID())
+  }
+
+  /** Read only: requires ai_agents:read. Does not execute AI. */
+  async getAiAgentUsage(params: AiAgentUsageParams = {}): Promise<AiAgentUsage> {
+    const body = await this.request<Envelope<AiAgentUsage>>('GET', this.withQuery('/ai-agents/usage', params))
+    return body.data
   }
 
   // ---- Channels ---------------------------------------------------------

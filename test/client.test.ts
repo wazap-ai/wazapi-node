@@ -423,3 +423,11 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
   assert.deepEqual(calls[1].body, { group_uuid: 'g1', stage_uuids: ['s2', 's3', 'won', 'lost'] })
   assert.deepEqual(calls[4].body, { stage_external_id: 'won', version: 2 })
 })
+
+test('AI usage performs GET with scoped filters and preserves unknown cache counters', async () => {
+  const data={currency:'USD',cost_basis:'catalog_estimate',timezone:'America/Sao_Paulo',days:7,since:'2026-10-01T00:00:00-03:00',until:'2026-10-02T19:00:00-03:00',daily:[{date:'2026-10-01',agent_uuid:'agent',agent_name:'AI',turns:1,prompt_tokens:100,output_tokens:5,input_tokens:null,cache_write_tokens:null,cache_write_1h_tokens:null,cache_read_tokens:null,classified_turns:0,unclassified_turns:1,cost_cents:0.025,classified_cost_cents:0,unclassified_cost_cents:0.025}]}
+  const client=new WazapiClient({token:'waz_api_test',baseUrl:'https://example.test/api/v1',fetch:stubFetch((url,init)=>{
+    const u=new URL(url);assert.equal(u.pathname,'/api/v1/ai-agents/usage');assert.equal(u.searchParams.get('days'),'7');assert.equal(u.searchParams.get('agent_uuid'),'agent');assert.equal(init.method,'GET');return json({data})
+  })})
+  const result=await client.getAiAgentUsage({days:7,agent_uuid:'agent'});assert.deepEqual(result,data);assert.equal(result.daily[0].cache_read_tokens,null)
+})
