@@ -16,6 +16,7 @@ import type {
   InboxResponseSettings,
   InboxResponseSettingsInput,
   ExecuteFlowInput,
+  GetFlowParams,
   Flow,
   ListContactsParams,
   ListParams,
@@ -224,8 +225,8 @@ export class WazapiClient {
     return this.request('GET', this.withQuery('/flows', params))
   }
 
-  async getFlow(uuid: string): Promise<Flow> {
-    const body = await this.request<Envelope<Flow>>('GET', `/flows/${encode(uuid)}`)
+  async getFlow(uuid: string, params: GetFlowParams = {}): Promise<Flow> {
+    const body = await this.request<Envelope<Flow>>('GET', this.withQuery(`/flows/${encode(uuid)}`, params))
     return body.data
   }
 
