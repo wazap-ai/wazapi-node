@@ -106,7 +106,7 @@ export interface ContactWrite {
   tracking?: ContactTrackingWrite
 }
 
-/** Tracking keys accepted on write: any `utm_*` plus the known click IDs. */
+/** Tracking keys accepted on write: any `utm_*`, known click IDs and provider referral fields. */
 export type ContactTrackingKey =
   | 'utm_source'
   | 'utm_medium'
@@ -121,14 +121,29 @@ export type ContactTrackingKey =
   | 'msclkid'
   | 'ttclid'
   | 'ctwa_clid'
+  | 'ad_id'
+  | 'ad_source_type'
+  | 'ad_source_url'
+  | 'ad_headline'
+  | 'ad_body'
+  | 'referral_source'
+  | 'referral_ref'
+  | 'referral_type'
+  | 'ad_message_at'
+  | 'ad_received_at'
 
 /** Up to 30 keys, values up to 500 characters. */
 export type ContactTrackingWrite = Partial<Record<ContactTrackingKey, string>>
 
 /**
  * What `Contact.tracking` returns: the write keys plus the ad fields Wazapi
- * records from Click-to-WhatsApp (`ad_id`, `ad_source_url`, `ad_headline`,
- * `ad_body`, `referral_source`, `referral_ref`).
+ * records from WhatsApp/Instagram referrals (API 1.36). `ad_source_type`
+ * distinguishes ad/post; `referral_type` retains the social provider event type.
+ * `ad_message_at` is the provider message timestamp in UTC, when available;
+ * `ad_received_at` is capture time. Neither is an exact click timestamp.
+ * Missing title, URL or `ctwa_clid` stays absent; Instagram does not gain a
+ * synthetic WhatsApp click ID. Conversation detail `customFields` holds the
+ * latest referral; this contact object retains first touch.
  */
 export type ContactTracking = Record<string, string>
 
@@ -801,6 +816,7 @@ export type WebhookEventType =
  * fields. Conversation values win over contact values (last touch over first
  * touch); no other custom field key is ever forwarded.
  */
+/** Ad inbound tracking is captured with the event and preserved through delayed delivery/retries. */
 export type WebhookTracking = Record<string, unknown>
 
 /**
