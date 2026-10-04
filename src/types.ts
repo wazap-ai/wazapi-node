@@ -1222,8 +1222,58 @@ export interface AiSummaryUsage {
 }
 export interface AiSummaryCosts {
   days: Array<{day: string; calls: string; costMicros: string | null; reservedMicros: string}>
-  calls: Array<{uuid: string; model: string; status: string; day: string; usage: AiSummaryUsage | null; cost_micros: string | null; reserved_micros: string; error_code: string | null; created_at: string}>
+  calls: AiSummaryCostCall[]
+  previews: Array<AiSummaryCostCall & { historical_summary_uuid: string | null; provider_attempted: boolean }>
+  previewDays: Array<{day: string; calls: string | number; costMicros: string | number | null; reservedMicros: string | number; unknownCostCalls: string | number}>
+  /** Aggregate budget usage, including legacy previews and unknown reservations. Never add to previewDays. */
+  previewBudgetDays: Array<{day: string; chargedOrReservedMicros: string | number}>
   budgetAlertDay: string | null
+}
+export interface AiSummaryCostCall {
+  uuid: string
+  source: 'automatic' | 'preview'
+  model: string
+  status: string
+  day: string
+  usage: AiSummaryUsage | null
+  cost_micros: string | number
+  /** False means the zero is unknown consumption, not a free call. */
+  cost_known: boolean
+  zero_cost_reason: string | null
+  reserved_micros: string | number
+  error_code: string | null
+  error_reason: string | null
+  failure_diagnostic: Record<string, unknown> | null
+  created_at: string
+}
+export interface AiSummaryPreviewInput {
+  conversationUuid: string
+  summaryUuid?: string
+  model?: string
+  instructions?: string
+}
+export interface AiSummaryPreviewResult {
+  previewUuid: string
+  status: 'completed' | 'skipped' | 'failed' | 'uncertain'
+  reason?: string
+  errorCode?: string
+  failureDiagnostic?: Record<string, unknown>
+  lines: string[]
+  model: string
+  usage: AiSummaryUsage | null
+  costUsdMicros: number
+  costUsd: number
+  /** False means zero is unknown consumption. No retry; reservation remains. */
+  costKnown: boolean
+  zeroCostReason: string | null
+  reservedUsdMicros: number
+  input: {
+    messages: Array<{role: 'system' | 'user'; content: string}>
+    afterMessageId: string
+    throughMessageId: string
+    now: string
+    timezone: string
+  }
 }
 export interface AiSummaryActor {
   type: 'user' | 'flow' | 'ai_agent' | 'api' | 'mcp' | 'system'

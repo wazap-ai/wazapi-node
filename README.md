@@ -1,5 +1,7 @@
 # @wazapi/sdk
 
+The package 5 candidate targets API 1.39. `getAiSummaryCosts()` keeps automatic calls separate from individual `previews` and their daily totals, including failures and safe reasons. `previewAiSummary()` returns its execution UUID, status, usage and cost. When `costKnown`/`cost_known` is false, zero means unknown provider consumption; the reservation remains. Never retry an uncertain paid preview or add aggregate `previewBudgetDays` to per-preview costs. Historical individual charges cannot be reconstructed. Installing this SDK activates no automation.
+
 Official Node.js SDK for the [Wazapi](https://wazapi.io) Public API v1 — a
 server-to-server client for sending WhatsApp messages, triggering flows, and
 managing contacts, templates and the store (products and orders).

@@ -2,7 +2,7 @@ import { WazapiError } from './error.js'
 import type {
   TeamReplyRecalculationInput, TeamReplyRecalculationResult,
   ChannelEventPage, ListChannelEventsParams,
-  AiSummarySettings, AiSummaryCosts,
+  AiSummarySettings, AiSummaryCosts, AiSummaryPreviewInput, AiSummaryPreviewResult,
 
   OwnerlessFallbackSettings,OwnerlessFallbackPatch,OwnerlessFallbackApplication,
 
@@ -122,6 +122,11 @@ export class WazapiClient {
   }
   async getAiSummaryCosts(): Promise<AiSummaryCosts> {
     return (await this.request<Envelope<AiSummaryCosts>>('GET', '/ai-summaries/costs')).data
+  }
+
+  /** Explicit paid preview (ai_agents:write). Check status/costKnown; never retry an uncertain result. */
+  async previewAiSummary(input: AiSummaryPreviewInput): Promise<AiSummaryPreviewResult> {
+    return (await this.request<Envelope<AiSummaryPreviewResult>>('POST', '/ai-summaries/preview', { body: input })).data
   }
 
   // ---- AI duty ----------------------------------------------------------
