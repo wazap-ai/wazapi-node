@@ -1,5 +1,7 @@
 # @wazapi/sdk
 
+The package 5 candidate targets API 1.39. `getAiSummaryCosts()` keeps automatic calls separate from individual `previews` and their daily totals, including failures and safe reasons. `previewAiSummary()` returns its execution UUID, status, usage and cost. When `costKnown`/`cost_known` is false, zero means unknown provider consumption; the reservation remains. Never retry an uncertain paid preview or add aggregate `previewBudgetDays` to per-preview costs. Historical individual charges cannot be reconstructed. Installing this SDK activates no automation.
+
 Official Node.js SDK for the [Wazapi](https://wazapi.io) Public API v1 — a
 server-to-server client for sending WhatsApp messages, triggering flows, and
 managing contacts, templates and the store (products and orders).
@@ -8,6 +10,20 @@ managing contacts, templates and the store (products and orders).
 - Fully typed against the OpenAPI contract (`GET /api/openapi/v1.json`).
 - Automatic `Idempotency-Key` generation for write operations.
 - Built-in polling helper for asynchronous operations.
+
+## Package 4 candidate (ORG-172 / API 1.38)
+
+SDK `0.28.0-org172.0` combines the complete stacked #31/#33 tree and #34/#35 over main `c9dbe70c`. It preserves channel history/retirement, usage, summary, team reply, ownerless fallback, media, reactions and ad attribution. Summary field/warnings and guard rewrite usage counters match the final app contract. This draft is unpublished; release requires a later owner order after the app package 4 is live.
+
+## AI duty (draft / API 1.38)
+
+`getAiDutySettings()` reads the company configuration without an AI call.
+`updateAiDutySettings({ mode, agentUuid, channels, dailyLimit })` replaces it.
+Modes are `desligado` (default), `sombra` (private shadow record) and `nota` (internal team note).
+Neither sends to a lead or takes over the conversation. An enabled mode needs an active agent from the same company.
+Phase 1 supports `channels: ['whatsapp']` or `[]`. The company-local daily cap defaults to 60 and counts reserved attempts, including failures.
+GET needs `ai_agents:read`; PUT needs explicit `ai_agents:write`. Both need Business and an active integration actor with `settings.general`.
+This candidate must be integrated with the other package drafts and deployed on the server before publishing the SDK.
 
 ## Install
 
@@ -396,3 +412,72 @@ version when updating a coupon or policy (version 0 creates a policy). Archive c
 than deleting them. Orders expose immutable `discount_cents` and `discount`; item `net_cents`
 is the amount after its allocated discount. A reserved use counts toward coupon limits;
 confirmed payment consumes it. Refunds do not automatically restore a use.
+
+### AI usage and cost (draft API 1.32 / SDK 0.24)
+
+Requires the read-only scope ai_agents:read. await client.getAiAgentUsage({ days: 7, agent_uuid: optionalAgentUuid }) returns company-local daily rows for that agent, or all agents when UUID is omitted. days is 1–90 including today.
+
+Cost uses catalog tariffs in fractional USD cents, not the provider invoice. Classified input/cache counters are nullable: old rows are unclassified, never assumed to have zero cache hits. Transport failures can have unobservable spend. No AI call, customer content or conversation mutation. This draft must follow the app deployment; do not publish yet.
+
+### Team reply (API 1.29 draft)
+
+`getInboxResponseSettings()` and `updateInboxResponseSettings({unansweredMode: "team_reply"})` expose the inbox mode. `recalculateTeamReply({dryRun: true, limit: 100})` previews one page; follow `nextCursor`. Apply requires explicit `dryRun: false` and the company in `team_reply`. Only the wait marker changes. Historical `unknown_preserved` rows retain their marker. Requires contacts:write and settings.general. This prerelease is unpublished.
+### Library media with captions (API 1.31, draft)
+
+Use client.sendMedia(channelUuidOrNull, phone, { media_uuid, caption? }, idempotencyKey?, replyToMessageUuid?). The file belongs to the token company library. WhatsApp image/video/document carry caption in the same message (up to 1024 characters). Audio rejects a nonempty caption; wait for the operation to succeed before sending text. The 24-hour window and blocked contacts are unchanged. This prerelease accompanies ORG-121; it must not be published before the matching app release.
+
+## Automatic conversation summaries (package 3 / API 1.38 candidate)
+
+`getAiSummarySettings()`, `updateAiSummarySettings(patch)` and `getAiSummaryCosts()` use
+`ai_summaries:read` / `ai_summaries:write`. Defaults remain disabled. Enabling is an
+explicit opt-in to model charges and `conversation.ai_summary` events. The default is
+`display: field`, `fieldKey: resumo_ia`; the selected field must exist, be active and textual.
+The read-only `warnings` explain skipped output. Select `display: note` explicitly for timeline notes. No field is created automatically.
+The event is typed as `ConversationAiSummaryEvent` in the webhook union. Deduplicate
+by event id; an absent `opportunity.external_id` must not be guessed from the contact.
+Amounts are USD millionths, not cents. An unconfirmed provider outcome has a null
+cost and retains its reservation. This prerelease is a draft; do not publish it
+before the matching app contract is reviewed and deployed.
+
+### Company response settings (API 1.32)
+
+`getInboxResponseSettings()` reads the company's `unansweredMode` and optional
+`overdueMinutes` (integer, 1–10080). `updateInboxResponseSettings(input)` updates
+them using the existing settings permissions. Omit `overdueMinutes` to preserve
+the stored value; pass `null` to disable the company fallback. A group's wait
+alert, then its enabled inactivity deadline, take precedence. Overdue
+conversations remain within unanswered, using the selected mode's clock.
+
+```ts
+await client.updateInboxResponseSettings({ unansweredMode: 'team_reply', overdueMinutes: 15 })
+const settings = await client.getInboxResponseSettings()
+await client.updateInboxResponseSettings({ unansweredMode: settings.unansweredMode, overdueMinutes: null })
+```
+
+### Ownerless conversation fallback (API 1.33; SDK 0.25)
+
+Use getOwnerlessFallback() to read the default group, optional WhatsApp/Instagram/Messenger overrides and inactive-group warnings. updateOwnerlessFallback(patch) preserves omitted fields; null disables the default or clears an override. Only active groups from the token's company can be selected. Requires contacts:read/write plus settings.general for the integration creator.
+
+applyOwnerlessFallback() is a read-only preview by default. Review its count and list before explicitly calling applyOwnerlessFallback({dryRun:false}). Eligible open/pending conversations have no user/group, at least one actual inbound and no active flow. Applying uses the normal group queue/distribution (including balanced_daily), ownerless_fallback history, system webhooks and one internal note; it sends no message to the person. New events use the same policy after flow termination or completed inbound routing. No periodic scan.
+
+This draft does not include the separate SDK 0.24 / ORG-129 change; preserve both additions when integrating that draft.
+
+### Reagir a uma mensagem (API 1.34.0)
+
+`await client.reactToMessage(conversationUuid, messageUuid, "👍")`. Passe `""` ou `null` para retirar sua reação. Requer `messages:write`, ator ativo com inbox, conversa visível e última mensagem do cliente há menos de 24h. O resultado é síncrono: confira `ok` e `error`; aceitação do provedor não prova entrega. Reação não vazia aceita conta como resposta nos três modos; retirada não reabre espera. Não atribui nem transfere conversa. Pacote candidato: não publicar antes de o endpoint estar no ar.
+
+Para o pacote da ORG-144, a aplicação também deve ter a migration `1780000550000_count_human_reactions` aplicada: ela alinha o classificador e a espera de `human_reply`/`team_reply` com a reação aceita. O SDK candidato continua sem publicação; o método e seu payload não mudaram com essa promoção.
+
+### Channel lifecycle and account alerts (ORG-135 draft API 1.35)
+
+`listChannels()` now includes WhatsApp, Instagram and Messenger and returns nullable historical actor/reason/time, downSince, healthStatus and accountRejection. Null means the historical fact is unknown.
+
+`listChannelEvents(channelUuid, {after, limit, kind})` is read-only (channels:read). It returns the raw `{items, nextCursor, retentionDays}` page, not an envelope. Pass nextCursor as after. Kinds include status_changed, inbound_dropped, account_rejected and account_recovered; dropped inbound retention is 30 days and excludes message text.
+
+Webhook types `ChannelStatusChangedEvent` and `ChannelAccountStatusChangedEvent` include the actor (person UUID, Meta or system). Account codes 131042/131031/368/131048 represent the account alert; 24-hour notification suppression and expiry are enforced by the core. Template acceptance is not proof of delivery.
+
+This prerelease stacks SDK drafts #24, #25–#27, #28, #29 and #30 locally, with #30 as the PR base. Requires core #430 on master a0d2bc19; do not publish before the future authorized app/Trigger package.
+
+### Channel retirement (API 1.36)
+
+`client.setChannelRetired(channelUuid, true)` retires a disconnected channel; `false` un-retires it. Requires `channels:write` and a current channel administrator as integration creator. `listChannels()` exposes `isRetired`, `retiredAt` and `retiredBy`. No message, reconnect or deletion occurs. Home alerts and new notification emails are suppressed while retired; reconnecting automatically clears retirement. This draft SDK is stacked on the channel-history SDK PR #31.

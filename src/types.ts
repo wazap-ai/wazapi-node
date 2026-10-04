@@ -1,8 +1,23 @@
 // Types mirror the Wazapi Public API v1 OpenAPI contract
 // (openapi/public-api.v1.json). Keep in sync when the contract changes.
 
+export interface AiDutySettings {
+  /** Phase 1 never sends or takes over a conversation. */
+  mode: 'desligado' | 'sombra' | 'nota'
+  agentUuid: string | null
+  channels: 'whatsapp'[]
+  /** Company-local daily reservations, including failed attempts. Default 60. */
+  dailyLimit: number
+}
+
 export type PublicApiScope =
+  | 'ai_agents:read'
+
+  | 'ai_summaries:read'
+  | 'ai_summaries:write'
+  | 'ai_agents:write'
   | 'channels:read'
+  | 'channels:write'
   | 'contacts:read'
   | 'contacts:write'
   | 'contacts:block'
@@ -43,13 +58,27 @@ export interface ChannelCapabilities {
   start_flow: boolean
 }
 
-export interface Channel {
+export interface ChannelRetirement {
+  isRetired: boolean
+  retiredAt: string | null
+  retiredBy: { uuid: string | null; name: string | null } | null
+}
+export interface ChannelRetirementResult extends ChannelRetirement {
+  channelUuid: string
+}
+export interface Channel extends ChannelRetirement {
   uuid: string
-  provider: 'whatsapp'
-  display_name: string | null
-  phone_number: string | null
+  provider: "whatsapp" | "instagram" | "messenger"
+  display_name?: string | null
+  phone_number?: string | null
   status: string
-  capabilities: ChannelCapabilities
+  capabilities: { send_text: boolean; send_template: boolean; start_flow: boolean }
+  statusChangedAt: string | null
+  statusReason: string | null
+  statusChangedBy: ChannelActor | null
+  downSince: string | null
+  healthStatus: "healthy" | "degraded" | "critical" | "unknown"
+  accountRejection?: ChannelAccountRejection | null
 }
 
 export interface Contact {
@@ -106,7 +135,7 @@ export interface ContactWrite {
   tracking?: ContactTrackingWrite
 }
 
-/** Tracking keys accepted on write: any `utm_*` plus the known click IDs. */
+/** Tracking keys accepted on write: any `utm_*`, known click IDs and provider referral fields. */
 export type ContactTrackingKey =
   | 'utm_source'
   | 'utm_medium'
@@ -121,14 +150,29 @@ export type ContactTrackingKey =
   | 'msclkid'
   | 'ttclid'
   | 'ctwa_clid'
+  | 'ad_id'
+  | 'ad_source_type'
+  | 'ad_source_url'
+  | 'ad_headline'
+  | 'ad_body'
+  | 'referral_source'
+  | 'referral_ref'
+  | 'referral_type'
+  | 'ad_message_at'
+  | 'ad_received_at'
 
 /** Up to 30 keys, values up to 500 characters. */
 export type ContactTrackingWrite = Partial<Record<ContactTrackingKey, string>>
 
 /**
  * What `Contact.tracking` returns: the write keys plus the ad fields Wazapi
- * records from Click-to-WhatsApp (`ad_id`, `ad_source_url`, `ad_headline`,
- * `ad_body`, `referral_source`, `referral_ref`).
+ * records from WhatsApp/Instagram referrals (API 1.36). `ad_source_type`
+ * distinguishes ad/post; `referral_type` retains the social provider event type.
+ * `ad_message_at` is the provider message timestamp in UTC, when available;
+ * `ad_received_at` is capture time. Neither is an exact click timestamp.
+ * Missing title, URL or `ctwa_clid` stays absent; Instagram does not gain a
+ * synthetic WhatsApp click ID. Conversation detail `customFields` holds the
+ * latest referral; this contact object retains first touch.
  */
 export type ContactTracking = Record<string, string>
 
@@ -335,7 +379,20 @@ export interface Recipient {
  * token. With several connected channels the request fails synchronously with
  * `422 channel_required` — discover the value with `listChannels()`.
  */
+/** A file UUID in the token company library. Audio cannot have a caption. */
+export interface MediaSendContent {
+  media_uuid: string
+  caption?: string
+}
+
 export type SendMessageInput =
+  | {
+      channel_uuid?: string
+      recipient: Recipient
+      type: 'media'
+      content: MediaSendContent
+      replyToMessageUuid?: string
+    }
   | {
       channel_uuid?: string
       recipient: Recipient
@@ -780,6 +837,9 @@ export interface StoreBatchResult {
 /* ── Webhooks ───────────────────────────────────────────────────────────── */
 
 export type WebhookEventType =
+  | 'channel.status_changed'
+  | 'channel.account_status_changed'
+  | 'conversation.ai_summary'
   | 'message.received'
   | 'message.status.updated'
   | 'message.transcribed'
@@ -801,6 +861,7 @@ export type WebhookEventType =
  * fields. Conversation values win over contact values (last touch over first
  * touch); no other custom field key is ever forwarded.
  */
+/** Ad inbound tracking is captured with the event and preserved through delayed delivery/retries. */
 export type WebhookTracking = Record<string, unknown>
 
 /**
@@ -1032,6 +1093,7 @@ export type CrmOpportunityArchivedEvent = WebhookEnvelope<
 
 /** Discriminated on `type` — narrow it and `data` narrows with it. */
 export type WazapiWebhookEvent =
+  | ConversationAiSummaryEvent
   | MessageReceivedEvent
   | MessageStatusUpdatedEvent
   | MessageTranscribedEvent
@@ -1088,3 +1150,251 @@ export interface StoreCouponPage {
   data: StoreCoupon[]
   meta: { currentPage: number; lastPage: number; perPage: number; total: number }
 }
+
+/** API 1.32: a tariff-based estimate, never the provider invoice. */
+export interface AiAgentUsageDay {
+  date: string
+  agent_uuid: string
+  agent_name: string
+  turns: number
+  prompt_tokens: number
+  output_tokens: number
+  /** These buckets sum classified turns only; null means none captured. */
+  input_tokens: number | null
+  cache_write_tokens: number | null
+  cache_write_1h_tokens: number | null
+  cache_read_tokens: number | null
+  classified_turns: number
+  unclassified_turns: number
+  cost_cents: number
+  classified_cost_cents: number
+  unclassified_cost_cents: number
+  guard_rewrite_turns: number
+  guard_rewrite_cost_cents: number
+}
+export interface AiAgentUsage {
+  currency: 'USD'
+  cost_basis: 'catalog_estimate'
+  timezone: string
+  days: number
+  since: string
+  until: string
+  daily: AiAgentUsageDay[]
+}
+export interface AiAgentUsageParams {
+  /** 1–90 company-local calendar days, including today. Default 7. */
+  days?: number
+  /** Omitted lists all agents with usage in the token's company. */
+  agent_uuid?: string
+}
+
+export type UnansweredMode = 'last_message' | 'human_reply' | 'team_reply'
+export interface TeamReplyRecalculationInput { dryRun: boolean; cursor?: string; limit?: number }
+export type TeamReplyRecalculationReason = 'recorded' | 'never_team' | 'answered_or_no_inbound' | 'ai_handoff' | 'inbound_with_person' | 'timeout_no_return' | 'unknown_preserved'
+export interface TeamReplyRecalculationResult {
+  dryRun: boolean; scanned: number; changed: number; waiting: number; unknown: number; nextCursor: string | null
+  changes: { conversationUuid: string; before: string | null; after: string | null; changed: boolean; reason: TeamReplyRecalculationReason }[]
+}
+/** Automatic internal summaries; disabled by default. Draft API 1.29. */
+export type AiSummaryTrigger = 'stage_changed' | 'assigned' | 'resolved' | 'nightly'
+export interface AiSummarySettings {
+  enabled: boolean
+  model: string
+  triggers: AiSummaryTrigger[]
+  minLeadMessages: number
+  minAgentMessages: number
+  maxLines: number
+  maxInputChars: number
+  dailyBudgetUsd: number
+  timezone: string
+  nightlyHour: number
+  /** Field is the package 3 default; a missing/invalid field skips without AI. */
+  display: 'field' | 'note'
+  fieldKey: string
+  warnings: Array<{ code: 'summary_field_missing' | 'summary_field_inactive' | 'summary_field_not_text'; fieldKey: string }>
+}
+export interface AiSummaryUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+}
+export interface AiSummaryCosts {
+  days: Array<{day: string; calls: string; costMicros: string | null; reservedMicros: string}>
+  calls: AiSummaryCostCall[]
+  previews: Array<AiSummaryCostCall & { historical_summary_uuid: string | null; provider_attempted: boolean }>
+  previewDays: Array<{day: string; calls: string | number; costMicros: string | number | null; reservedMicros: string | number; unknownCostCalls: string | number}>
+  /** Aggregate budget usage, including legacy previews and unknown reservations. Never add to previewDays. */
+  previewBudgetDays: Array<{day: string; chargedOrReservedMicros: string | number}>
+  budgetAlertDay: string | null
+}
+export interface AiSummaryCostCall {
+  uuid: string
+  source: 'automatic' | 'preview'
+  model: string
+  status: string
+  day: string
+  usage: AiSummaryUsage | null
+  cost_micros: string | number
+  /** False means the zero is unknown consumption, not a free call. */
+  cost_known: boolean
+  zero_cost_reason: string | null
+  reserved_micros: string | number
+  error_code: string | null
+  error_reason: string | null
+  failure_diagnostic: Record<string, unknown> | null
+  created_at: string
+}
+export interface AiSummaryPreviewInput {
+  conversationUuid: string
+  summaryUuid?: string
+  model?: string
+  instructions?: string
+}
+export interface AiSummaryPreviewResult {
+  previewUuid: string
+  status: 'completed' | 'skipped' | 'failed' | 'uncertain'
+  reason?: string
+  errorCode?: string
+  failureDiagnostic?: Record<string, unknown>
+  lines: string[]
+  model: string
+  usage: AiSummaryUsage | null
+  costUsdMicros: number
+  costUsd: number
+  /** False means zero is unknown consumption. No retry; reservation remains. */
+  costKnown: boolean
+  zeroCostReason: string | null
+  reservedUsdMicros: number
+  input: {
+    messages: Array<{role: 'system' | 'user'; content: string}>
+    afterMessageId: string
+    throughMessageId: string
+    now: string
+    timezone: string
+  }
+}
+export interface AiSummaryActor {
+  type: 'user' | 'flow' | 'ai_agent' | 'api' | 'mcp' | 'system'
+  user: {uuid: string; name: string | null} | null
+  integration_uuid: string | null
+}
+export type ConversationAiSummaryEvent = WebhookEnvelope<'conversation.ai_summary', {
+  actor: AiSummaryActor
+  trigger_actor: AiSummaryActor
+  trigger: AiSummaryTrigger
+  conversation: {uuid: string}
+  opportunity: {uuid: string; external_id: string | null} | null
+  summary: {uuid: string; text: string; date: string; model: string; usage: AiSummaryUsage; cost_usd_micros: number; cost_currency: 'USD'; after_message_id: string; through_message_id: string}
+}>
+
+/** Company response settings, matching the API 1.32 contract. */
+export interface InboxResponseSettings {
+  unansweredMode: 'last_message' | 'human_reply' | 'team_reply'
+  /** Optional fallback in minutes (1–10080). Null disables it. Group deadlines win. */
+  overdueMinutes?: number | null
+}
+
+/** Omission preserves the existing threshold; explicit null disables it. */
+export type InboxResponseSettingsInput = InboxResponseSettings
+
+/** Ownerless conversation routing settings, API 1.33. */
+export type OwnerlessProvider = 'whatsapp' | 'instagram' | 'messenger'
+export interface OwnerlessFallbackPatch {
+ defaultGroupUuid?: string | null
+ channels?: Partial<Record<OwnerlessProvider,string|null>>
+}
+export interface OwnerlessFallbackSettings {
+ defaultGroupUuid: string | null
+ channels: Record<OwnerlessProvider,string|null>
+ groups: {uuid:string;name:string}[]
+ warnings: {groupUuid:string;name:string|null;reason:'inactive_group'|'invalid_group'}[]
+}
+export interface OwnerlessFallbackApplication {
+ dryRun:boolean
+ total:number
+ applicable:number
+ applied:number
+ skipped:number
+ items:{conversationUuid:string;channel:string;groupUuid:string|null;groupName:string|null;reason:string}[]
+}
+export type DistributionOrigin='queue'|'distribution'|'transfer'|'manual'|'flow'|'ai'|'ownerless_fallback'
+
+export interface MessageReactionResult {
+  ok:boolean
+  error:string|null
+  conversation_uuid:string
+  message_uuid:string
+  reactions:Array<{emoji:string;actor_user_id:number|null;direction:'inbound'|'outbound'}>
+}
+
+export interface ChannelActor {
+  type: "person" | "Meta" | "system"
+  uuid: string | null
+}
+
+export interface ChannelAccountRejection {
+  code: 131042 | 131031 | 368 | 131048
+  reason: string
+  occurredAt: string
+  expiresAt: string
+  active: boolean
+}
+
+export interface ChannelEvent {
+  uuid: string
+  kind: "status_changed" | "inbound_dropped" | "account_rejected" | "account_recovered" | "retirement_changed"
+  type: "direct" | "comment" | "other" | "retired" | "unretired" | null
+  senderIdentifier: string | null
+  providerEventId: string | null
+  status: string | null
+  previousStatus: string | null
+  reason: string | null
+  actor: ChannelActor
+  occurredAt: string
+  providerOccurredAt: string | null
+  downSince: string | null
+  isMessage: boolean
+}
+
+export interface ChannelEventPage {
+  items: (ChannelEvent)[]
+  nextCursor: string | null
+  retentionDays: 30
+}
+
+export interface ChannelStatusChangedEvent {
+  id: string
+  api_version: "v1"
+  occurred_at: string
+  type: "channel.status_changed"
+  data: { channel_uuid: string; provider: "whatsapp" | "instagram" | "messenger"; status: "connected" | "disconnected" | "critical"; previous_status: string | null; status_changed_at: string; status_reason: string | null; status_changed_by: ChannelActor }
+}
+
+export interface ChannelAccountStatusChangedEvent {
+  id: string
+  api_version: "v1"
+  occurred_at: string
+  type: "channel.account_status_changed"
+  data: { channel_uuid: string; provider: "whatsapp"; status: "account_rejected" | "account_recovered"; code: 131042 | 131031 | 368 | 131048 | null; reason: string; occurred_at: string; actor: ChannelActor; expires_at: string | null }
+}
+
+export interface ListChannelEventsParams { after?: string; limit?: number; kind?: ChannelEvent['kind'] }
+
+/** Public API group settings, including the ORG184 fair queue controls. */
+export interface SupportGroup {
+  uuid: string
+  name: string
+  wait_alert_minutes: number | null
+  distribution_strategy: 'least_busy' | 'round_robin' | 'random' | 'balanced_daily' | null
+  queue_when_unavailable: boolean
+  distribution_schedule_uuid: string | null
+  /** Per-minute deliveries and queue conversations awaiting their first human reply. */
+  queue_batch_per_agent: number | null
+  /** Minutes after schedule opening: default 15, zero disables; no schedule means no wait. */
+  queue_opening_delay_minutes: number
+  /** Active queue conversations per person in this group; null removes the ceiling. */
+  queue_max_per_agent: number | null
+}
+export type SupportGroupPatch = Partial<Omit<SupportGroup, 'uuid' | 'name'>>
