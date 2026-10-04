@@ -1088,3 +1088,20 @@ export interface StoreCouponPage {
   data: StoreCoupon[]
   meta: { currentPage: number; lastPage: number; perPage: number; total: number }
 }
+
+/** Public API group settings, including the ORG184 fair queue controls. */
+export interface SupportGroup {
+  uuid: string
+  name: string
+  wait_alert_minutes: number | null
+  distribution_strategy: 'least_busy' | 'round_robin' | 'random' | 'balanced_daily' | null
+  queue_when_unavailable: boolean
+  distribution_schedule_uuid: string | null
+  /** Per-minute deliveries and queue conversations awaiting their first human reply. */
+  queue_batch_per_agent: number | null
+  /** Minutes after schedule opening: default 15, zero disables; no schedule means no wait. */
+  queue_opening_delay_minutes: number
+  /** Active queue conversations per person in this group; null removes the ceiling. */
+  queue_max_per_agent: number | null
+}
+export type SupportGroupPatch = Partial<Omit<SupportGroup, 'uuid' | 'name'>>
