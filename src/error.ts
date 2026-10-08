@@ -48,6 +48,8 @@ export class WazapiError extends Error {
       'recipient_opted_out',
       'contact_blocked',
       'recipient_marketing_limit_reached',
+      'recipient_in_experiment',
+      'recipient_undeliverable',
       'duplicate_template_send',
       'template_frequency_cap_exceeded',
       'company_daily_marketing_cap_exceeded',
