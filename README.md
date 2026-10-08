@@ -167,6 +167,8 @@ polled operation):
 | `marketing_sends_disabled`              | MARKETING sending is off for the company (an owner enables it in the dashboard) or platform-wide. |
 | `recipient_opted_out`                   | The recipient opted out (reply keyword, native WhatsApp control, or manual suppression). Filter on `contact.marketing_opted_out`. |
 | `recipient_marketing_limit_reached`     | API 1.4: a previous MARKETING send to this phone failed with Meta error 131049 (per-user marketing limit, counted across all businesses) in the last 24h. Meta asks for 24h before retrying; see `details.retry_after_seconds`. UTILITY and AUTHENTICATION are not affected. |
+| `recipient_in_experiment`               | Meta placed the contact in a marketing experiment (error 130472): no MARKETING template from any business while their 24h window is closed. Blocked for up to 30 days, released when the contact messages you; see `details.retry_after_seconds`. |
+| `recipient_undeliverable`               | API 1.40: a previous template to this phone failed with Meta error 131026 (no WhatsApp account, terms not accepted or outdated app) in the last 30 days, and the contact has not messaged you since. Applies to every category but AUTHENTICATION; resending returns the same error. See `details.retry_after_seconds`. |
 | `duplicate_template_send`               | Same template already sent to this phone in the last 24h.                |
 | `template_frequency_cap_exceeded`       | Per-contact MARKETING cap (1/24h, 3/7 days). Sends made while the recipient's 24h customer service window is open do not count (API 1.4). |
 | `company_daily_marketing_cap_exceeded`  | Company-wide daily MARKETING cap.                                        |

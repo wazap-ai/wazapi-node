@@ -166,6 +166,16 @@ test('treats the per-user marketing limit as a compliance block (API 1.4)', () =
   assert.equal(err.isComplianceBlocked, true)
 })
 
+test('treats an undeliverable number (Meta 131026) as a compliance block (API 1.40)', () => {
+  const err = new WazapiError({
+    status: 422,
+    code: 'recipient_undeliverable',
+    message: 'Meta could not deliver to this number (error 131026).',
+    details: { retry_after_seconds: 2_500_000 },
+  })
+  assert.equal(err.isComplianceBlocked, true)
+})
+
 test('deletes a store product and lists categories (API 1.6)', async () => {
   const calls: string[] = []
   const client = new WazapiClient({
