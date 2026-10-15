@@ -230,6 +230,20 @@ New orders also arrive as the `order.created` webhook event, and every status
 change as `order.status.updated` (API 1.19). The two are not ordered: upsert by
 `order_uuid` and compare `updated_at`.
 
+Since API 1.42 the order and both webhooks carry the buyer and the payment at
+the root, every field nullable: `customer_email`, `customer_document` (CPF/CNPJ,
+digits only), `payment_status`, `payment_provider`, `paid_at` (UTC instant the
+order became `pago`), `payment` (`method`, `provider_bill_id`, `installments` of
+the paid gateway charge) and `agent` (the AI agent that closed the sale). Enough
+to enrol a student the moment the order is paid:
+
+```ts
+if (event.type === 'order.status.updated' && event.data.status === 'pago') {
+  const { customer_document, customer_email, paid_at, payment } = event.data
+  await enrol({ cpf: customer_document, email: customer_email, paidAt: paid_at, method: payment?.method })
+}
+```
+
 ### CRM with your own ids (API 1.20–1.22)
 
 Stages and opportunities take your system's `external_id`, and writes accept
