@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { WazapiClient, WazapiError } from '../dist/index.js'
+import type { Message, MessageAuthor } from '../dist/index.js'
 
 type Handler = (url: string, init: RequestInit) => Response | Promise<Response>
 
@@ -432,4 +433,37 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
   )
   assert.deepEqual(calls[1].body, { group_uuid: 'g1', stage_uuids: ['s2', 's3', 'won', 'lost'] })
   assert.deepEqual(calls[4].body, { stage_external_id: 'won', version: 2 })
+})
+
+test('reads the message author: inbox send, automation and older contracts (API 1.42)', async () => {
+  const author: MessageAuthor = {
+    uuid: 'u1',
+    name: 'Ana Atendente',
+    email: 'ana@example.dev',
+    external_id: null,
+  }
+  let seenUrl = ''
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url) => {
+      seenUrl = url
+      return json({
+        data: [
+          { uuid: 'm1', direction: 'outbound', type: 'template', author },
+          { uuid: 'm2', direction: 'outbound', type: 'template', author: null },
+          { uuid: 'm3', direction: 'inbound', type: 'text' },
+        ],
+        meta: { next_cursor: null },
+      })
+    }),
+  })
+  const page = await client.listMessages('c1', { limit: 3 })
+  const authors: Array<MessageAuthor | null | undefined> = page.data.map(
+    (message: Message) => message.author
+  )
+  assert.match(seenUrl, /\/conversations\/c1\/messages\?limit=3/)
+  assert.deepEqual(authors, [author, null, undefined])
+  assert.equal(page.data[0].author?.name, 'Ana Atendente')
+  assert.equal(page.data[2].author ?? null, null)
 })
