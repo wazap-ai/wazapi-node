@@ -268,9 +268,17 @@ export interface Message {
   deleted_by: MessageDeletedBy | null
   /** When the text or caption was last edited; `content` holds the current value (API 1.5). */
   edited_at: string | null
+  author?: MessageAuthor | null
   provider_message_id: string | null
   created_at: string | null
   updated_at: string | null
+}
+
+export interface MessageAuthor {
+  uuid: string
+  name: string
+  email: string
+  external_id: string | null
 }
 
 export type OperationStatus =

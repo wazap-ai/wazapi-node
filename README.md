@@ -203,6 +203,23 @@ blocked.meta_blocked // false when Meta refused (only people who wrote in the la
 await wazapi.unblockContact(contact.uuid)
 ```
 
+## Message author (API 1.42)
+
+`Message.author` says which team member sent the message from the Wazapi inbox:
+`{ uuid, name, email, external_id }`, the same shape as a CRM opportunity's
+`assignee`. Text, media and template sent from the inbox come out the same way.
+It is `null` for inbound messages and automation (flows, AI agent, Public API
+and MCP template sends), and absent on servers older than contract 1.42.0.
+Returned by `listMessages` and `getConversation(uuid, { include: 'messages' })`.
+
+```ts
+const page = await wazapi.listMessages(conversationUuid)
+for (const message of page.data) {
+  const sentBy = message.author?.name ?? 'automation or contact'
+  // message.author?.external_id — the person's id in your system (Settings → Users)
+}
+```
+
 ## Store (API 1.6)
 
 Products and orders of the company's Wazapi store. Product writes are
@@ -366,7 +383,7 @@ new WazapiClient({
 - `listContacts(params)` (filters `query`, `email`, `phone`), `getContact(uuid)`, `createContact(input)`, `updateContact(uuid, input)`, `blockContact(uuid)`, `unblockContact(uuid)`, `upsertContactByExternalId(externalId, input)`
 - `listTemplates(params)`, `getTemplate(name)`
 - `listFlows(params)`, `getFlow(uuid)`, `executeFlow(flowUuid, input, idempotencyKey?)`
-- `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`
+- `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)` (`author` on each message, API 1.42)
 - `sendMessage(input, idempotencyKey?)`, `sendText(...)`, `sendTemplate(...)`
 - `getStore()`, `listStoreProducts(params)`, `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, patch)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(products)`, `listStoreCategories()`
 - `listStoreOrders(params)` (filters `status`, `source`, `payment_method`, `query`, `updated_after`), `getStoreOrder(uuid)`, `updateStoreOrderStatus(uuid, status)`, `createStoreOrder(input, idempotencyKey?)`, `listStoreShippingOptions()` (API 1.19)
