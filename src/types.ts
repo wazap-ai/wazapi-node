@@ -782,6 +782,7 @@ export interface StoreBatchResult {
 /* ── Webhooks ───────────────────────────────────────────────────────────── */
 
 export type WebhookEventType =
+  | 'conversation.fields_changed'
   | 'message.received'
   | 'message.status.updated'
   | 'message.transcribed'
@@ -1033,7 +1034,37 @@ export type CrmOpportunityArchivedEvent = WebhookEnvelope<
 >
 
 /** Discriminated on `type` — narrow it and `data` narrows with it. */
+export type ConversationFieldActor = {
+  user: { uuid: string; name: string | null } | null
+  integration_uuid: string | null
+} & (
+  | { type: 'user'; email?: string }
+  | { type: 'flow' | 'ai_agent' | 'api' | 'mcp' | 'system'; email?: never }
+)
+
+export interface ConversationFieldsChangedData {
+  conversation: {
+    uuid: string
+    status: string
+    channel: { uuid: string; provider: string } | null
+    fields_snapshot?: { uuid_crm: unknown }
+  }
+  contact: { uuid: string; external_id: string | null }
+  changes: Array<{
+    key: string
+    type: string
+    before: { value: unknown; label?: string | null }
+    after: { value: unknown; label?: string | null }
+  }>
+  actor: ConversationFieldActor
+}
+export type ConversationFieldsChangedEvent = WebhookEnvelope<
+  'conversation.fields_changed',
+  ConversationFieldsChangedData
+>
+
 export type WazapiWebhookEvent =
+  | ConversationFieldsChangedEvent
   | MessageReceivedEvent
   | MessageStatusUpdatedEvent
   | MessageTranscribedEvent
