@@ -247,9 +247,31 @@ export interface ConversationDetail extends Conversation {
   messages?: Message[]
 }
 
+/** One question → answer of a WhatsApp form reply (API 1.43). */
+export interface FormReplyAnswer {
+  key: string
+  label: string
+  value: string
+}
+
+/**
+ * `content` of a `form_reply` message: the contact answered a WhatsApp form
+ * (WhatsApp Flows). `uuid`/`name` are `null` when the form was deleted (API 1.43).
+ */
+export interface FormReplyContent {
+  /** Plain `Question: answer` summary, one per line. */
+  text: string
+  form: { uuid: string | null; name: string | null; answers: FormReplyAnswer[] }
+}
+
 export interface Message {
   uuid: string
   direction: 'inbound' | 'outbound'
+  /**
+   * Message kind (`text`, `image`, `template`, `interactive`, ...). `form_reply`
+   * carries a {@link FormReplyContent}; a form sent by a flow is an outbound
+   * `interactive` whose `content.form` is `{ uuid, name, cta }` (API 1.43).
+   */
   type: string
   status: string
   content: Record<string, unknown>
