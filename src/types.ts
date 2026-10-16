@@ -199,6 +199,7 @@ export type TemplateSendHeader =
 
 export type TemplateSendButton =
   | { index: number; url_suffix: string }
+  /** Up to 15 characters on a limited-time offer template, 20 otherwise. */
   | { index: number; coupon_code: string }
   /** API 1.10: QUICK_REPLY, optional. Comes back as `content.reply.id` on `message.received`. */
   | { index: number; payload: string }
@@ -214,7 +215,9 @@ export interface TemplateSendComponents {
   buttons?: TemplateSendButton[]
   /**
    * API 1.44: required when `variables.limited_time_offer.has_expiration` is true.
-   * Unix timestamp in milliseconds when the offer ends.
+   * Unix timestamp in milliseconds when the offer ends: later than now and within the next
+   * year. An end already past answers `offer_expired` (also on the polled operation, when
+   * pacing held the send until after the end).
    */
   limited_time_offer?: { expiration_time_ms: number }
   /** API 1.44: one entry per carousel card, in card order (the position is the card index). */

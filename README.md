@@ -139,9 +139,10 @@ await wazapi.sendTemplate(null, '+5511999998888', {
   name: 'flash_sale',
   components: {
     body: ['Maria'],
+    // Unix ms, in the future (an end already past answers `offer_expired`)
     limited_time_offer: { expiration_time_ms: Date.now() + 48 * 3600 * 1000 },
     buttons: [
-      { index: 0, coupon_code: 'FLASH20' },
+      { index: 0, coupon_code: 'FLASH20' }, // up to 15 characters on an offer
       { index: 1, url_suffix: 'sale' },
     ],
   },
