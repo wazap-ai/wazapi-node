@@ -433,3 +433,50 @@ test('deletes and reorders CRM stages, and writes opportunities (API 1.21)', asy
   assert.deepEqual(calls[1].body, { group_uuid: 'g1', stage_uuids: ['s2', 's3', 'won', 'lost'] })
   assert.deepEqual(calls[4].body, { stage_external_id: 'won', version: 2 })
 })
+
+test('reads buyer, payment and agent on the order and keeps them nullable (API 1.42)', async () => {
+  const paid = {
+    uuid: 'order-paid',
+    status: 'pago',
+    source: 'ai_agent',
+    customer_email: 'joana@escola.com',
+    customer_document: '12345678909',
+    payment_status: 'paid',
+    payment_provider: 'vindi',
+    paid_at: '2026-10-15T12:00:00.000Z',
+    payment: { method: 'credit_card', provider_bill_id: 'bill-77', installments: 3 },
+    agent: { uuid: 'agent-1', name: 'Ana' },
+  }
+  const manual = {
+    uuid: 'order-manual',
+    status: 'novo',
+    source: 'api',
+    customer_email: null,
+    customer_document: null,
+    payment_status: null,
+    payment_provider: null,
+    paid_at: null,
+    payment: null,
+    agent: null,
+  }
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url) =>
+      url.endsWith('/store/orders/order-paid') ? json({ data: paid }) : json({ data: manual })
+    ),
+  })
+
+  const order = await client.getStoreOrder('order-paid')
+  assert.equal(order.customer_document, '12345678909')
+  assert.equal(order.paid_at, '2026-10-15T12:00:00.000Z')
+  assert.equal(order.payment?.method, 'credit_card')
+  assert.equal(order.payment?.installments, 3)
+  assert.equal(order.agent?.name, 'Ana')
+
+  const other = await client.getStoreOrder('order-manual')
+  assert.equal(other.customer_email, null)
+  assert.equal(other.paid_at, null)
+  assert.equal(other.payment, null)
+  assert.equal(other.agent, null)
+})

@@ -688,7 +688,56 @@ export type StoreOrderSource =
   | 'ai_agent'
   | 'api'
 
-export interface StoreOrder {
+/** Paid gateway charge of an order (API 1.42). */
+export interface StoreOrderPayment {
+  method: 'pix' | 'bank_slip' | 'credit_card'
+  /** Id of the charge on the gateway (the Vindi bill id). */
+  provider_bill_id: string | null
+  /** 1 for Pix and bank slip. */
+  installments: number
+}
+
+/** AI agent that closed the sale (API 1.42). */
+export interface StoreOrderAgent {
+  uuid: string
+  /** Current agent name; null when the agent was deleted after the sale. */
+  name: string | null
+}
+
+/**
+ * Gateway payment state of a `payment_method: checkout` order; null without a
+ * gateway charge (manual payment, `mark_paid`). `status: 'pago'` is the order
+ * being paid; this field says how the gateway sees the charge. (API 1.42)
+ */
+export type StoreOrderPaymentStatus =
+  | 'processing'
+  | 'paid'
+  | 'failed'
+  | 'unknown'
+  | 'rejected'
+  | 'cancelled'
+  | 'review'
+  | 'refunded'
+  | 'disputed'
+
+/** Buyer and payment fields shared by the order and the order webhooks (API 1.42). All may be null. */
+export interface StoreOrderBuyerPayment {
+  /** E-mail typed at checkout (`billing.email`); null for orders placed without billing data. */
+  customer_email: string | null
+  /** Buyer's tax id (CPF/CNPJ) typed at checkout, digits only. */
+  customer_document: string | null
+  payment_status: StoreOrderPaymentStatus | null
+  /** Gateway that charged the order (`vindi`); null without a gateway charge. */
+  payment_provider: string | null
+  /** UTC instant the order became `pago`; null until then, and for orders paid before API 1.42. */
+  paid_at: string | null
+  /** The gateway charge that paid the order; null when not paid through the gateway. */
+  payment: StoreOrderPayment | null
+  /** AI agent that closed the sale (`source: 'ai_agent'`); null for every other source. */
+  agent: StoreOrderAgent | null
+}
+
+export interface StoreOrder extends StoreOrderBuyerPayment {
   uuid: string
   /** Short human reference (first 8 chars of the uuid) shown to the customer. */
   ref: string
@@ -921,7 +970,7 @@ export interface FlowExecutionUpdatedData {
  * event was built. Events are not ordered: upsert by `order_uuid` and compare
  * `updated_at`.
  */
-export interface OrderCreatedData extends WebhookContactRefs {
+export interface OrderCreatedData extends WebhookContactRefs, StoreOrderBuyerPayment {
   order_uuid: string
   ref: string
   status: string
