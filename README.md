@@ -108,6 +108,46 @@ extra header or button answers `template_component_mismatch`. Templates whose
 body uses named `{{name}}` placeholders are not sendable yet
 (`template_format_unsupported`).
 
+### Carousel and limited-time offer (API 1.43)
+
+A carousel template lists its cards in `variables.cards`. Send one entry per
+card, in the same order, each with its media and its own values. A
+limited-time offer with `variables.limited_time_offer.has_expiration` takes the
+end of the offer as a Unix timestamp in milliseconds:
+
+```ts
+await wazapi.sendTemplate(null, '+5511999998888', {
+  name: 'summer_collection',
+  components: {
+    body: ['Maria'],
+    cards: [
+      {
+        header: { type: 'image', link: 'https://store.example.com/p/101.jpg' },
+        body: ['$ 89'],
+        buttons: [{ index: 0, url_suffix: 'p/101' }],
+      },
+      {
+        header: { type: 'image', media_uuid: '5f0c2b1e-…' },
+        body: ['$ 129'],
+        buttons: [{ index: 0, url_suffix: 'p/102' }],
+      },
+    ],
+  },
+})
+
+await wazapi.sendTemplate(null, '+5511999998888', {
+  name: 'flash_sale',
+  components: {
+    body: ['Maria'],
+    limited_time_offer: { expiration_time_ms: Date.now() + 48 * 3600 * 1000 },
+    buttons: [
+      { index: 0, coupon_code: 'FLASH20' },
+      { index: 1, url_suffix: 'sale' },
+    ],
+  },
+})
+```
+
 The send is asynchronous: the API returns `202 Accepted` with an operation you
 poll (or receive via webhook). `waitForOperation` handles the polling:
 
