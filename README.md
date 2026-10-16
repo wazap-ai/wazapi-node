@@ -108,7 +108,7 @@ extra header or button answers `template_component_mismatch`. Templates whose
 body uses named `{{name}}` placeholders are not sendable yet
 (`template_format_unsupported`).
 
-### Carousel and limited-time offer (API 1.43)
+### Carousel and limited-time offer (API 1.44)
 
 A carousel template lists its cards in `variables.cards`. Send one entry per
 card, in the same order, each with its media and its own values. A

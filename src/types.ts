@@ -169,9 +169,9 @@ export interface TemplateVariables {
   has_dynamic_buttons: boolean
   /** API 1.9: every button in template order, with the value it takes at send time. */
   buttons: TemplateButton[]
-  /** API 1.43: carousel cards in card order; empty for other templates. */
+  /** API 1.44: carousel cards in card order; empty for other templates. */
   cards: TemplateCard[]
-  /** API 1.43: present on limited-time offer templates, `null` otherwise. */
+  /** API 1.44: present on limited-time offer templates, `null` otherwise. */
   limited_time_offer: { text: string; has_expiration: boolean } | null
 }
 
@@ -213,11 +213,11 @@ export interface TemplateSendComponents {
   body?: string[]
   buttons?: TemplateSendButton[]
   /**
-   * API 1.43: required when `variables.limited_time_offer.has_expiration` is true.
+   * API 1.44: required when `variables.limited_time_offer.has_expiration` is true.
    * Unix timestamp in milliseconds when the offer ends.
    */
   limited_time_offer?: { expiration_time_ms: number }
-  /** API 1.43: one entry per carousel card, in card order (the position is the card index). */
+  /** API 1.44: one entry per carousel card, in card order (the position is the card index). */
   cards?: TemplateSendCard[]
 }
 
