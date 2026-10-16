@@ -169,6 +169,18 @@ export interface TemplateVariables {
   has_dynamic_buttons: boolean
   /** API 1.9: every button in template order, with the value it takes at send time. */
   buttons: TemplateButton[]
+  /** API 1.44: carousel cards in card order; empty for other templates. */
+  cards: TemplateCard[]
+  /** API 1.44: present on limited-time offer templates, `null` otherwise. */
+  limited_time_offer: { text: string; has_expiration: boolean } | null
+}
+
+export interface TemplateCard {
+  /** Position of the card: send its values at the same position of `components.cards`. */
+  index: number
+  header_format: 'IMAGE' | 'VIDEO' | null
+  body_parameter_count: number
+  buttons: TemplateButton[]
 }
 
 /** Header value for a template send; `type` is `variables.header.format` lowercased. */
@@ -187,6 +199,7 @@ export type TemplateSendHeader =
 
 export type TemplateSendButton =
   | { index: number; url_suffix: string }
+  /** Up to 15 characters on a limited-time offer template, 20 otherwise. */
   | { index: number; coupon_code: string }
   /** API 1.10: QUICK_REPLY, optional. Comes back as `content.reply.id` on `message.received`. */
   | { index: number; payload: string }
@@ -200,6 +213,23 @@ export interface TemplateSendComponents {
   /** Body `{{1}}..{{n}}` values, in order. Do not also send `parameters`. */
   body?: string[]
   buttons?: TemplateSendButton[]
+  /**
+   * API 1.44: required when `variables.limited_time_offer.has_expiration` is true.
+   * Unix timestamp in milliseconds when the offer ends: later than now and within the next
+   * year. An end already past answers `offer_expired` (also on the polled operation, when
+   * pacing held the send until after the end).
+   */
+  limited_time_offer?: { expiration_time_ms: number }
+  /** API 1.44: one entry per carousel card, in card order (the position is the card index). */
+  cards?: TemplateSendCard[]
+}
+
+export interface TemplateSendCard {
+  /** The card media; `type` is `variables.cards[].header_format` lowercased. */
+  header: { type: 'image' | 'video' } & TemplateSendMedia
+  /** Card body `{{1}}..{{n}}` values, in order. */
+  body?: string[]
+  buttons?: Array<{ index: number; url_suffix: string } | { index: number; payload: string }>
 }
 
 export interface TemplateSendContent {
