@@ -524,3 +524,121 @@ test('manages the integration webhooks (API 1.46)', async () => {
   )
   assert.deepEqual(calls[0].body, input)
 })
+
+test('upserts CRM opportunities by external id with an idempotency key (API 1.27)', async () => {
+  const seen: { method?: string; url: string; key: string | null; body: unknown }[] = []
+  const opportunity = { uuid: 'opp-1', external_id: 'deal-9' }
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      const headers = new Headers(init.headers)
+      seen.push({ method: init.method, url, key: headers.get('Idempotency-Key'), body: JSON.parse(String(init.body)) })
+      if (url.endsWith('/upsert-batch'))
+        return json({
+          data: [
+            { index: 0, external_id: 'deal-9', result: 'unchanged', opportunity, warnings: [] },
+            { index: 1, external_id: 'deal-10', error: { status: 422, code: 'invalid_stage', message: 'Unknown stage.' } },
+          ],
+        })
+      return json(
+        { data: { result: 'moved_group', opportunity, warnings: ['invalid_assignee'] } },
+        { headers: { 'content-type': 'application/json', 'Idempotent-Replayed': 'true' } }
+      )
+    }),
+  })
+  const input = { group_uuid: 'g-1', title: 'Plano anual', contact_phone: '+5511999990000', stage_external_id: 'proposal' }
+  const one = await client.upsertCrmOpportunityByExternalId('deal-9', input, 'sync-1')
+  assert.equal(one.result, 'moved_group')
+  assert.deepEqual(one.warnings, ['invalid_assignee'])
+  assert.equal(one.replayed, true)
+  assert.equal(seen[0].method, 'PUT')
+  assert.match(seen[0].url, /\/crm\/opportunities\/by-external-id\/deal-9$/)
+  assert.equal(seen[0].key, 'sync-1')
+  assert.deepEqual(seen[0].body, input)
+
+  const batch = await client.upsertCrmOpportunitiesBatch([{ ...input, external_id: 'deal-9' }])
+  assert.equal(batch.replayed, false)
+  assert.equal(batch.results.length, 2)
+  const failed = batch.results[1]
+  assert.ok('error' in failed && failed.error.code === 'invalid_stage')
+  assert.ok(seen[1].key && seen[1].key.length > 0)
+  assert.deepEqual(seen[1].body, { items: [{ ...input, external_id: 'deal-9' }] })
+})
+
+test('reads groups and channel events, and patches conversation fields', async () => {
+  const calls: Array<{ method: string; url: string; body: unknown }> = []
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push({ method: init.method ?? 'GET', url, body: init.body ? JSON.parse(String(init.body)) : null })
+      if (url.includes('/events'))
+        return json({ items: [{ uuid: 'ev-1', kind: 'status_changed', actor: { type: 'Meta', uuid: null } }], nextCursor: null, retentionDays: 30 })
+      if (url.includes('/retirement'))
+        return json({ channelUuid: 'ch-1', isRetired: true, retiredAt: '2026-10-17T12:00:00Z', retiredBy: null })
+      if (url.includes('/fields'))
+        return json({ data: { uuid: 'conv-1', custom_fields: { plano: 'anual' } } })
+      if (url.includes('/groups?'))
+        return json({ data: [{ uuid: 'g-1', name: 'Vendas' }], meta: { next_cursor: null } })
+      return json({ data: { uuid: 'g-1', name: 'Vendas', distribution_strategy: 'balanced_daily' } })
+    }),
+  })
+  const page = await client.listChannelEvents('ch-1', { kind: 'status_changed', limit: 20 })
+  assert.equal(page.items[0].actor.type, 'Meta')
+  assert.equal(page.retentionDays, 30)
+  assert.equal((await client.setChannelRetired('ch-1', true)).isRetired, true)
+  assert.equal((await client.listGroups({ limit: 5 })).data[0].name, 'Vendas')
+  const group = await client.updateGroup('g-1', { distribution_strategy: 'balanced_daily', queue_max_per_agent: null })
+  assert.equal(group.distribution_strategy, 'balanced_daily')
+  const fields = await client.updateConversationFields('conv-1', { plano: 'anual', motivo: null })
+  assert.equal(fields.custom_fields.plano, 'anual')
+  assert.deepEqual(
+    calls.map((call) => `${call.method} ${call.url.replace('https://example.test/api/v1', '')}`),
+    [
+      'GET /channels/ch-1/events?kind=status_changed&limit=20',
+      'PUT /channels/ch-1/retirement',
+      'GET /groups?limit=5',
+      'PATCH /groups/g-1',
+      'PATCH /conversations/conv-1/fields',
+    ]
+  )
+  assert.deepEqual(calls[1].body, { retired: true })
+  assert.deepEqual(calls[3].body, { distribution_strategy: 'balanced_daily', queue_max_per_agent: null })
+  assert.deepEqual(calls[4].body, { custom_fields: { plano: 'anual', motivo: null } })
+})
+
+test('returns unwrapped bodies for company queries and guard rules (API 1.36–1.37)', async () => {
+  const calls: string[] = []
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push(`${init.method ?? 'GET'} ${url.replace('https://example.test/api/v1', '')}`)
+      if (url.endsWith('/company-queries')) return json({ queries: [{ uuid: 'q-1', name: 'Estoque' }] })
+      if (url.endsWith('/test')) return json({ queryUuid: 'q-1', httpStatus: 200, durationMs: 80, responseChars: 12, errorCode: null, text: '{"ok":true}' })
+      if (url.includes('/guard-hits')) return json({ agentUuid: 'a-1', page: 1, limit: 20, hasMore: false, items: [] })
+      if (url.endsWith('/settings/ai-duty')) return json({ data: { mode: 'nota', agentUuid: 'a-1', channels: ['whatsapp'], dailyLimit: 60 } })
+      return json({ agentUuid: 'a-1', rule: { uuid: 'r-1', mode: 'ensaio' } }, { status: 201 })
+    }),
+  })
+  assert.equal((await client.listCompanyQueries()).queries[0].uuid, 'q-1')
+  assert.equal((await client.testCompanyQuery('q-1', { sku: '42' })).httpStatus, 200)
+  const saved = await client.createAiAgentGuardRule('a-1', {
+    name: 'Sem datas passadas',
+    kind: 'past_date',
+    patterns: ['dia {integer}'],
+    correction: 'Ofereça só datas futuras.',
+    finalAction: { type: 'handoff' },
+  })
+  assert.equal(saved.rule.mode, 'ensaio')
+  assert.equal((await client.listAiAgentGuardHits('a-1', { since: '2026-10-01' })).hasMore, false)
+  assert.equal((await client.getAiDutySettings()).mode, 'nota')
+  assert.deepEqual(calls, [
+    'GET /company-queries',
+    'POST /company-queries/q-1/test',
+    'POST /ai-agents/a-1/guard-rules',
+    'GET /ai-agents/a-1/guard-hits?since=2026-10-01',
+    'GET /settings/ai-duty',
+  ])
+})

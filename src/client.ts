@@ -45,6 +45,61 @@ import type {
   WebhookEndpoint,
   WebhookEndpointWithSecret,
   WebhookEndpointWrite,
+  AiAgentQueryResult,
+  AiAgentUsage,
+  AiAgentUsageParams,
+  AiDutySettings,
+  AiSummaryCostReport,
+  AiSummaryPreview,
+  AiSummaryPreviewInput,
+  AiSummarySettings,
+  AiSummarySettingsPatch,
+  ChannelEventListParams,
+  ChannelEventPage,
+  ChannelRetirementResult,
+  CompanyQueryCreate,
+  CompanyQueryDeleteResult,
+  CompanyQueryList,
+  CompanyQueryPatch,
+  CompanyQueryResult,
+  CompanyQueryTestResult,
+  ConversationFieldOptions,
+  ConversationPanel,
+  ConversationPanelPatch,
+  CrmOpportunityUpsert,
+  CrmOpportunityUpsertBatchResult,
+  CrmOpportunityUpsertItem,
+  CrmOpportunityUpsertResult,
+  CustomFieldCreate,
+  CustomFieldDefinition,
+  CustomFieldPatch,
+  EntryKind,
+  EntrySettings,
+  EntryTargets,
+  FieldOption,
+  FlowEntries,
+  FlowEntryTargets,
+  GroupDistributionReport,
+  InboxResponseSettings,
+  KnowledgeSourceList,
+  KnowledgeSourceResult,
+  KnowledgeUrlCreate,
+  KnowledgeUrlPatch,
+  MessageReactionResult,
+  OwnerlessFallbackApplication,
+  OwnerlessFallbackPatch,
+  OwnerlessFallbackSettings,
+  ReplyGuardHitParams,
+  ReplyGuardHits,
+  ReplyGuardRuleCreate,
+  ReplyGuardRulePatch,
+  ReplyGuardRules,
+  ReplyGuardSaved,
+  StaleSessionSettings,
+  StaleSessionSettingsPatch,
+  SupportGroup,
+  SupportGroupPatch,
+  TeamReplyRecalculation,
 } from './types.js'
 
 export interface WazapiClientOptions {
@@ -101,6 +156,19 @@ export class WazapiClient {
   async listChannels(): Promise<Channel[]> {
     const body = await this.request<Envelope<Channel[]>>('GET', '/channels')
     return body.data
+  }
+
+  /** Status transitions and inbound dropped while down, newest first. Requires `channels:read`. (API 1.32) */
+  listChannelEvents(uuid: string, params: ChannelEventListParams = {}): Promise<ChannelEventPage> {
+    return this.request('GET', this.withQuery(`/channels/${encode(uuid)}/events`, params))
+  }
+
+  /**
+   * Marks a disconnected channel as retired (silences its alerts) or restores it;
+   * a connected channel answers 409. Requires `channels:write`. (API 1.37)
+   */
+  setChannelRetired(uuid: string, retired: boolean): Promise<ChannelRetirementResult> {
+    return this.request('PUT', `/channels/${encode(uuid)}/retirement`, { body: { retired } })
   }
 
   // ---- Contacts ---------------------------------------------------------
@@ -178,8 +246,12 @@ export class WazapiClient {
     return this.request('GET', this.withQuery('/flows', params))
   }
 
-  async getFlow(uuid: string): Promise<Flow> {
-    const body = await this.request<Envelope<Flow>>('GET', `/flows/${encode(uuid)}`)
+  /** Pass `flow_session_uuid` to resolve the monitoring rule inherited by that session's callers. */
+  async getFlow(uuid: string, options: { flow_session_uuid?: string } = {}): Promise<Flow> {
+    const body = await this.request<Envelope<Flow>>(
+      'GET',
+      this.withQuery(`/flows/${encode(uuid)}`, options)
+    )
     return body.data
   }
 
@@ -219,6 +291,39 @@ export class WazapiClient {
       'GET',
       this.withQuery(`/conversations/${encode(conversationUuid)}/messages`, params)
     )
+  }
+
+  /**
+   * Sets conversation custom field values; `null` clears one. A select field
+   * takes a listed value or its unambiguous label. Requires `conversations:write`. (API 1.25)
+   */
+  async updateConversationFields(
+    uuid: string,
+    customFields: Record<string, unknown>
+  ): Promise<{ uuid: string; custom_fields: Record<string, unknown> }> {
+    const body = await this.request<Envelope<{ uuid: string; custom_fields: Record<string, unknown> }>>(
+      'PATCH',
+      `/conversations/${encode(uuid)}/fields`,
+      { body: { custom_fields: customFields } }
+    )
+    return body.data
+  }
+
+  /**
+   * Reacts with one emoji; `null` or `''` removes the reaction. Synchronous:
+   * check `ok`, not only the HTTP status. Requires `messages:write`.
+   */
+  async reactToMessage(
+    conversationUuid: string,
+    messageUuid: string,
+    emoji: string | null
+  ): Promise<MessageReactionResult> {
+    const body = await this.request<Envelope<MessageReactionResult>>(
+      'POST',
+      `/conversations/${encode(conversationUuid)}/messages/${encode(messageUuid)}/reaction`,
+      { body: { emoji } }
+    )
+    return body.data
   }
 
   // ---- Messages ---------------------------------------------------------
@@ -422,6 +527,409 @@ export class WazapiClient {
   /** Archives the opportunity (no permanent deletion); its `external_id` can be reused. (API 1.21) */
   async archiveCrmOpportunity(uuid: string): Promise<void> {
     await this.request<null>('DELETE', `/crm/opportunities/${encode(uuid)}`)
+  }
+
+  /**
+   * Creates or updates the opportunity with your `externalId`, moving it between
+   * boards on the same uuid. The idempotency key is kept 24 hours: a replay
+   * returns the saved response with `replayed: true`. Requires `crm:write`. (API 1.27)
+   */
+  async upsertCrmOpportunityByExternalId(
+    externalId: string,
+    input: CrmOpportunityUpsert,
+    idempotencyKey?: string
+  ): Promise<CrmOpportunityUpsertResult & { replayed: boolean }> {
+    const { data, headers } = await this.rawRequest<Envelope<CrmOpportunityUpsertResult>>(
+      'PUT',
+      `/crm/opportunities/by-external-id/${encode(externalId)}`,
+      { body: input, headers: { 'Idempotency-Key': idempotencyKey ?? this.newIdempotencyKey() } }
+    )
+    return { ...data.data, replayed: headers.get('Idempotent-Replayed') === 'true' }
+  }
+
+  /** Upserts up to 100 opportunities with a per-item result; one invalid item does not fail the rest. (API 1.27) */
+  async upsertCrmOpportunitiesBatch(
+    items: CrmOpportunityUpsertItem[],
+    idempotencyKey?: string
+  ): Promise<{ results: CrmOpportunityUpsertBatchResult[]; replayed: boolean }> {
+    const { data, headers } = await this.rawRequest<Envelope<CrmOpportunityUpsertBatchResult[]>>(
+      'POST',
+      '/crm/opportunities/upsert-batch',
+      { body: { items }, headers: { 'Idempotency-Key': idempotencyKey ?? this.newIdempotencyKey() } }
+    )
+    return { results: data.data, replayed: headers.get('Idempotent-Replayed') === 'true' }
+  }
+
+  // ---- Groups -----------------------------------------------------------
+
+  /** Support groups (each one is also a CRM board). Requires `groups:read`. (API 1.24) */
+  listGroups(params: { after?: string; limit?: number } = {}): Promise<Paginated<SupportGroup>> {
+    return this.request('GET', this.withQuery('/groups', params))
+  }
+
+  async getGroup(uuid: string): Promise<SupportGroup> {
+    const body = await this.request<Envelope<SupportGroup>>('GET', `/groups/${encode(uuid)}`)
+    return body.data
+  }
+
+  /** Waiting alert, distribution strategy and queue options; never changes flows. Requires `groups:write`. */
+  async updateGroup(uuid: string, input: SupportGroupPatch): Promise<SupportGroup> {
+    const body = await this.request<Envelope<SupportGroup>>('PATCH', `/groups/${encode(uuid)}`, {
+      body: input,
+    })
+    return body.data
+  }
+
+  /** Who received what on `day` (company timezone, defaults to today) and the queue figures. (API 1.27) */
+  async getGroupDistributionReport(
+    uuid: string,
+    params: { day?: string } = {}
+  ): Promise<GroupDistributionReport> {
+    const body = await this.request<Envelope<GroupDistributionReport>>(
+      'GET',
+      this.withQuery(`/groups/${encode(uuid)}/distribution`, params)
+    )
+    return body.data
+  }
+
+  // ---- Custom fields and context panel ----------------------------------
+
+  /** Contact and conversation custom field definitions. Requires `contacts:read` and `settings.general`. (API 1.24) */
+  async listCustomFields(): Promise<CustomFieldDefinition[]> {
+    const body = await this.request<Envelope<CustomFieldDefinition[]>>('GET', '/custom-fields')
+    return body.data
+  }
+
+  async createCustomField(input: CustomFieldCreate): Promise<CustomFieldDefinition> {
+    const body = await this.request<Envelope<CustomFieldDefinition>>('POST', '/custom-fields', {
+      body: input,
+    })
+    return body.data
+  }
+
+  /** Partial update: an omitted attribute keeps its value. */
+  async updateCustomField(uuid: string, input: CustomFieldPatch): Promise<CustomFieldDefinition> {
+    const body = await this.request<Envelope<CustomFieldDefinition>>(
+      'PATCH',
+      `/custom-fields/${encode(uuid)}`,
+      { body: input }
+    )
+    return body.data
+  }
+
+  /** Options of a conversation select field. Requires `fields:read`. (API 1.25) */
+  async getConversationFieldOptions(key: string): Promise<ConversationFieldOptions> {
+    const body = await this.request<Envelope<ConversationFieldOptions>>(
+      'GET',
+      `/conversation-fields/${encode(key)}/options`
+    )
+    return body.data
+  }
+
+  /**
+   * Replaces the whole option list (up to 2000 values). Stored values never
+   * change and no webhook is sent. Requires `fields:write`. (API 1.25)
+   */
+  async replaceConversationFieldOptions(
+    key: string,
+    options: FieldOption[]
+  ): Promise<ConversationFieldOptions> {
+    const body = await this.request<Envelope<ConversationFieldOptions>>(
+      'PUT',
+      `/conversation-fields/${encode(key)}/options`,
+      { body: { options } }
+    )
+    return body.data
+  }
+
+  /** Layout of the conversation context panel. (API 1.24) */
+  async getConversationPanel(): Promise<ConversationPanel> {
+    const body = await this.request<Envelope<ConversationPanel>>('GET', '/context-panel')
+    return body.data
+  }
+
+  /** Omitted options keep their value; a supplied array replaces its list. */
+  async updateConversationPanel(input: ConversationPanelPatch): Promise<ConversationPanel> {
+    const body = await this.request<Envelope<ConversationPanel>>('PUT', '/context-panel', {
+      body: input,
+    })
+    return body.data
+  }
+
+  // ---- Entries ----------------------------------------------------------
+
+  /** Whether public entries (comments, mentions) get their own routing. Requires `entries:read`. (API 1.26) */
+  async getEntrySettings(): Promise<EntrySettings> {
+    const body = await this.request<Envelope<EntrySettings>>('GET', '/entry-settings')
+    return body.data
+  }
+
+  async updateEntrySettings(input: EntrySettings): Promise<EntrySettings> {
+    const body = await this.request<Envelope<EntrySettings>>('PATCH', '/entry-settings', {
+      body: input,
+    })
+    return body.data
+  }
+
+  async getFlowEntries(uuid: string): Promise<FlowEntryTargets> {
+    const body = await this.request<Envelope<FlowEntryTargets>>('GET', `/flows/${encode(uuid)}/entries`)
+    return body.data
+  }
+
+  async updateFlowEntries(uuid: string, supportedEntries: FlowEntries): Promise<FlowEntryTargets> {
+    const body = await this.request<Envelope<FlowEntryTargets>>(
+      'PATCH',
+      `/flows/${encode(uuid)}/entries`,
+      { body: { supported_entries: supportedEntries } }
+    )
+    return body.data
+  }
+
+  async getKeywordEntries(uuid: string): Promise<EntryTargets> {
+    const body = await this.request<Envelope<EntryTargets>>('GET', `/keywords/${encode(uuid)}/entries`)
+    return body.data
+  }
+
+  /** An empty list means every entry. */
+  async updateKeywordEntries(uuid: string, supportedEntries: EntryKind[]): Promise<EntryTargets> {
+    const body = await this.request<Envelope<EntryTargets>>(
+      'PATCH',
+      `/keywords/${encode(uuid)}/entries`,
+      { body: { supported_entries: supportedEntries } }
+    )
+    return body.data
+  }
+
+  async getAiAgentEntries(uuid: string): Promise<EntryTargets> {
+    const body = await this.request<Envelope<EntryTargets>>('GET', `/ai-agents/${encode(uuid)}/entries`)
+    return body.data
+  }
+
+  /** An empty list denies every entry; public entries need an explicit opt-in. */
+  async updateAiAgentEntries(uuid: string, supportedEntries: EntryKind[]): Promise<EntryTargets> {
+    const body = await this.request<Envelope<EntryTargets>>(
+      'PATCH',
+      `/ai-agents/${encode(uuid)}/entries`,
+      { body: { supported_entries: supportedEntries } }
+    )
+    return body.data
+  }
+
+  // ---- Inbox and automation settings ------------------------------------
+
+  /** What counts as unanswered and the overdue threshold. Requires `contacts:read` and `settings.general`. */
+  async getInboxResponseSettings(): Promise<InboxResponseSettings> {
+    const body = await this.request<Envelope<InboxResponseSettings>>('GET', '/inbox-response-settings')
+    return body.data
+  }
+
+  async updateInboxResponseSettings(input: InboxResponseSettings): Promise<InboxResponseSettings> {
+    const body = await this.request<Envelope<InboxResponseSettings>>(
+      'PUT',
+      '/inbox-response-settings',
+      { body: input }
+    )
+    return body.data
+  }
+
+  /**
+   * Previews (`dryRun: true`) or applies the `team_reply` waiting markers to
+   * open conversations. Follow `nextCursor` until `null`.
+   */
+  async recalculateTeamReply(input: {
+    dryRun: boolean
+    cursor?: string
+    limit?: number
+  }): Promise<TeamReplyRecalculation> {
+    const body = await this.request<Envelope<TeamReplyRecalculation>>(
+      'POST',
+      '/inbox-response-settings/recalculate',
+      { body: input }
+    )
+    return body.data
+  }
+
+  /** Stalled bot watchdog. Requires `settings:read`. (API 1.28) */
+  async getStaleSessionSettings(): Promise<StaleSessionSettings> {
+    const body = await this.request<Envelope<StaleSessionSettings>>('GET', '/settings/stale-sessions')
+    return body.data
+  }
+
+  /** Enabling may start flows or assign groups on the next minute sweep. Requires `settings:write`. */
+  async updateStaleSessionSettings(input: StaleSessionSettingsPatch): Promise<StaleSessionSettings> {
+    const body = await this.request<Envelope<StaleSessionSettings>>(
+      'PATCH',
+      '/settings/stale-sessions',
+      { body: input }
+    )
+    return body.data
+  }
+
+  /** Group for conversations left with no person and no group. (API 1.33) */
+  async getOwnerlessFallback(): Promise<OwnerlessFallbackSettings> {
+    const body = await this.request<Envelope<OwnerlessFallbackSettings>>(
+      'GET',
+      '/settings/ownerless-fallback'
+    )
+    return body.data
+  }
+
+  async updateOwnerlessFallback(input: OwnerlessFallbackPatch): Promise<OwnerlessFallbackSettings> {
+    const body = await this.request<Envelope<OwnerlessFallbackSettings>>(
+      'PATCH',
+      '/settings/ownerless-fallback',
+      { body: input }
+    )
+    return body.data
+  }
+
+  /** Previews by default; `dryRun: false` assigns the current ownerless conversations. */
+  async applyOwnerlessFallback(
+    input: { dryRun?: boolean } = {}
+  ): Promise<OwnerlessFallbackApplication> {
+    const body = await this.request<Envelope<OwnerlessFallbackApplication>>(
+      'POST',
+      '/settings/ownerless-fallback/apply',
+      { body: input }
+    )
+    return body.data
+  }
+
+  // ---- AI ---------------------------------------------------------------
+
+  /** Requires `ai_summaries:read`. (API 1.29) */
+  async getAiSummarySettings(): Promise<AiSummarySettings> {
+    const body = await this.request<Envelope<AiSummarySettings>>('GET', '/settings/ai-summaries')
+    return body.data
+  }
+
+  /** Requires `ai_summaries:write`. */
+  async updateAiSummarySettings(input: AiSummarySettingsPatch): Promise<AiSummarySettings> {
+    const body = await this.request<Envelope<AiSummarySettings>>('PATCH', '/settings/ai-summaries', {
+      body: input,
+    })
+    return body.data
+  }
+
+  async getAiSummaryCosts(): Promise<AiSummaryCostReport> {
+    const body = await this.request<Envelope<AiSummaryCostReport>>('GET', '/ai-summaries/costs')
+    return body.data
+  }
+
+  /** A paid summary that writes nothing; counts against the daily budget. Requires `ai_agents:write`. */
+  async previewAiSummary(input: AiSummaryPreviewInput): Promise<AiSummaryPreview> {
+    const body = await this.request<Envelope<AiSummaryPreview>>('POST', '/ai-summaries/preview', {
+      body: input,
+    })
+    return body.data
+  }
+
+  /** Estimated AI usage and cost per agent and day. Requires `ai_agents:read`. (API 1.35) */
+  async getAiAgentUsage(params: AiAgentUsageParams = {}): Promise<AiAgentUsage> {
+    const body = await this.request<Envelope<AiAgentUsage>>(
+      'GET',
+      this.withQuery('/ai-agents/usage', params)
+    )
+    return body.data
+  }
+
+  /** The agent's allowed company queries. Requires `ai_agents:read`. */
+  getAiAgent(uuid: string): Promise<AiAgentQueryResult> {
+    return this.request('GET', `/ai-agents/${encode(uuid)}`)
+  }
+
+  /** Replaces the agent's company query allowlist; `[]` removes them all. Requires `settings:write`. */
+  updateAiAgentQueryPermissions(
+    uuid: string,
+    allowedCompanyQueryUuids: string[]
+  ): Promise<AiAgentQueryResult> {
+    return this.request('PATCH', `/ai-agents/${encode(uuid)}`, {
+      body: { allowedCompanyQueryUuids },
+    })
+  }
+
+  /** Requires `ai_agents:read`. (API 1.37) */
+  async getAiDutySettings(): Promise<AiDutySettings> {
+    const body = await this.request<Envelope<AiDutySettings>>('GET', '/settings/ai-duty')
+    return body.data
+  }
+
+  /** Replaces all four fields. Requires `ai_agents:write`. */
+  async updateAiDutySettings(input: AiDutySettings): Promise<AiDutySettings> {
+    const body = await this.request<Envelope<AiDutySettings>>('PUT', '/settings/ai-duty', {
+      body: input,
+    })
+    return body.data
+  }
+
+  /** Reply guard rules of an agent. Requires `ai_agents:read`. (API 1.36) */
+  listAiAgentGuardRules(agentUuid: string): Promise<ReplyGuardRules> {
+    return this.request('GET', `/ai-agents/${encode(agentUuid)}/guard-rules`)
+  }
+
+  /** Creates a rule in `ensaio` (logs only). Requires `ai_agents:write`. */
+  createAiAgentGuardRule(agentUuid: string, input: ReplyGuardRuleCreate): Promise<ReplyGuardSaved> {
+    return this.request('POST', `/ai-agents/${encode(agentUuid)}/guard-rules`, { body: input })
+  }
+
+  /** Partial update; `mode: 'ativo'` lets the rule rewrite replies. */
+  updateAiAgentGuardRule(
+    agentUuid: string,
+    ruleUuid: string,
+    input: ReplyGuardRulePatch
+  ): Promise<ReplyGuardSaved> {
+    return this.request(
+      'PATCH',
+      `/ai-agents/${encode(agentUuid)}/guard-rules/${encode(ruleUuid)}`,
+      { body: input }
+    )
+  }
+
+  listAiAgentGuardHits(agentUuid: string, params: ReplyGuardHitParams = {}): Promise<ReplyGuardHits> {
+    return this.request('GET', this.withQuery(`/ai-agents/${encode(agentUuid)}/guard-hits`, params))
+  }
+
+  /** Live HTTPS queries AI agents may call, without credentials. Requires `ai_agents:read`. (API 1.37) */
+  listCompanyQueries(): Promise<CompanyQueryList> {
+    return this.request('GET', '/company-queries')
+  }
+
+  /** Requires `settings:write`. */
+  createCompanyQuery(input: CompanyQueryCreate): Promise<CompanyQueryResult> {
+    return this.request('POST', '/company-queries', { body: input })
+  }
+
+  updateCompanyQuery(uuid: string, input: CompanyQueryPatch): Promise<CompanyQueryResult> {
+    return this.request('PATCH', `/company-queries/${encode(uuid)}`, { body: input })
+  }
+
+  /** Deletes the query and removes it from every agent. */
+  deleteCompanyQuery(uuid: string): Promise<CompanyQueryDeleteResult> {
+    return this.request('DELETE', `/company-queries/${encode(uuid)}`)
+  }
+
+  /** Runs the GET without AI, inactive queries included. */
+  testCompanyQuery(uuid: string, args: Record<string, string> = {}): Promise<CompanyQueryTestResult> {
+    return this.request('POST', `/company-queries/${encode(uuid)}/test`, { body: { args } })
+  }
+
+  /** URL knowledge sources, without secrets. Requires `knowledge:read`. */
+  listKnowledgeSources(): Promise<KnowledgeSourceList> {
+    return this.request('GET', '/knowledge/sources')
+  }
+
+  /** Requires `knowledge:write`. `queued` does not mean indexed. */
+  createKnowledgeUrlSource(input: KnowledgeUrlCreate): Promise<KnowledgeSourceResult> {
+    return this.request('POST', '/knowledge/sources', { body: input })
+  }
+
+  updateKnowledgeUrlSource(uuid: string, input: KnowledgeUrlPatch): Promise<KnowledgeSourceResult> {
+    return this.request('PATCH', `/knowledge/sources/${encode(uuid)}`, { body: input })
+  }
+
+  /** Queues a forced reread; may spend embeddings. */
+  reindexKnowledgeUrlSource(uuid: string): Promise<KnowledgeSourceResult> {
+    return this.request('POST', `/knowledge/sources/${encode(uuid)}/reindex`)
   }
 
   /** Webhooks of the integration that owns the token, without secrets. Requires `webhooks:read`. (API 1.46) */
