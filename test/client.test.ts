@@ -480,3 +480,47 @@ test('reads buyer, payment and agent on the order and keeps them nullable (API 1
   assert.equal(other.payment, null)
   assert.equal(other.agent, null)
 })
+
+test('manages the integration webhooks (API 1.46)', async () => {
+  const calls: Array<{ method: string; url: string; body: unknown }> = []
+  const endpoint = {
+    uuid: 'wh-1',
+    url: 'https://erp.example/wazapi',
+    events: ['message.send.failed', 'webhook.test'],
+    active: true,
+    secret_hint: 'whsec_••••abcd',
+    previous_secret_expires_at: null,
+    created_at: null,
+    updated_at: null,
+  }
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push({ method: init.method ?? 'GET', url, body: init.body ? JSON.parse(String(init.body)) : null })
+      if (init.method === 'DELETE') return new Response(null, { status: 204 })
+      if (url.endsWith('/test')) return json({ data: { event: 'webhook.test', queued: true } }, { status: 202 })
+      if (init.method === 'GET') return json({ data: [endpoint] })
+      return json({ data: { ...endpoint, secret: 'whsec_new' } }, { status: init.method === 'POST' && url.endsWith('/webhooks') ? 201 : 200 })
+    }),
+  })
+  const input = { url: endpoint.url, events: ['message.send.failed' as const] }
+  assert.equal((await client.createWebhook(input)).secret, 'whsec_new')
+  assert.equal((await client.listWebhooks())[0].uuid, 'wh-1')
+  await client.updateWebhook('wh-1', input)
+  assert.equal((await client.rotateWebhookSecret('wh-1')).secret, 'whsec_new')
+  await client.testWebhook('wh-1')
+  await client.deleteWebhook('wh-1')
+  assert.deepEqual(
+    calls.map((call) => `${call.method} ${call.url.replace('https://example.test/api/v1', '')}`),
+    [
+      'POST /webhooks',
+      'GET /webhooks',
+      'PUT /webhooks/wh-1',
+      'POST /webhooks/wh-1/rotate-secret',
+      'POST /webhooks/wh-1/test',
+      'DELETE /webhooks/wh-1',
+    ]
+  )
+  assert.deepEqual(calls[0].body, input)
+})
