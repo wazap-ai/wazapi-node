@@ -23,6 +23,10 @@ export type PublicApiScope =
   | 'crm:read'
   /** Create and edit CRM stages (API 1.20). */
   | 'crm:write'
+  /** List this integration's webhooks (API 1.46). */
+  | 'webhooks:read'
+  /** Manage this integration's webhooks; each event also needs the scope that reads it (API 1.46). */
+  | 'webhooks:write'
 
 export interface PaginationMeta {
   next_cursor: string | null
@@ -888,6 +892,7 @@ export type WebhookEventType =
   | 'message.transcribed'
   | 'message.updated'
   | 'message.deleted'
+  | 'message.send.failed'
   | 'conversation.created'
   | 'conversation.updated'
   | 'flow.execution.updated'
@@ -1018,6 +1023,21 @@ export interface FlowExecutionUpdatedData {
 }
 
 /**
+ * A `POST /messages` operation of your integration ended `failed`, including
+ * failures before Meta accepted it (free-form text outside the 24h window, a
+ * blocked contact, a send guard rejection). Opt-in per webhook. (API 1.46)
+ */
+export interface MessageSendFailedData {
+  operation_uuid: string
+  operation_type: 'message.send'
+  status: 'failed'
+  /** The recipient as sent in `POST /messages`, phone normalized. */
+  recipient: { phone: string; external_id?: string } | null
+  /** Same `code` as the polled operation, e.g. `whatsapp_window_closed`. */
+  error: { code: string; message: string | null }
+}
+
+/**
  * A store order was created, from any source. `status` is the status when the
  * event was built. Events are not ordered: upsert by `order_uuid` and compare
  * `updated_at`.
@@ -1089,6 +1109,7 @@ export type FlowExecutionUpdatedEvent = WebhookEnvelope<
   'flow.execution.updated',
   FlowExecutionUpdatedData
 >
+export type MessageSendFailedEvent = WebhookEnvelope<'message.send.failed', MessageSendFailedData>
 export type OrderCreatedEvent = WebhookEnvelope<'order.created', OrderCreatedData>
 export type OrderStatusUpdatedEvent = WebhookEnvelope<
   'order.status.updated',
@@ -1143,6 +1164,7 @@ export type WazapiWebhookEvent =
   | ConversationCreatedEvent
   | ConversationUpdatedEvent
   | FlowExecutionUpdatedEvent
+  | MessageSendFailedEvent
   | OrderCreatedEvent
   | OrderStatusUpdatedEvent
   | CrmOpportunityCreatedEvent
@@ -1190,4 +1212,33 @@ export interface AgentDiscountPolicy extends AgentDiscountPolicyInput { uuid: st
 export interface StoreCouponPage {
   data: StoreCoupon[]
   meta: { currentPage: number; lastPage: number; perPage: number; total: number }
+}
+
+/* ── Webhook management (API 1.46) ─────────────────────────────────────── */
+
+/** A webhook of the integration that owns the token. */
+export interface WebhookEndpoint {
+  uuid: string
+  url: string
+  /** Subscribed events, `webhook.test` included. */
+  events: WebhookEventType[]
+  active: boolean
+  /** Last 4 characters of the signing secret. */
+  secret_hint: string
+  /** While set, deliveries are also signed with the secret replaced by the last rotation. */
+  previous_secret_expires_at: string | null
+  created_at: string | null
+  updated_at: string | null
+}
+
+/** Returned only by `createWebhook` and `rotateWebhookSecret`: store `secret` now. */
+export interface WebhookEndpointWithSecret extends WebhookEndpoint {
+  secret: string
+}
+
+export interface WebhookEndpointWrite {
+  /** Public HTTPS URL. */
+  url: string
+  /** `webhook.test` is always added. Each event needs the token scope that reads it. */
+  events: WebhookEventType[]
 }

@@ -42,6 +42,9 @@ import type {
   CrmOpportunityWrite,
   CrmOpportunityPatch,
   ListCrmOpportunitiesParams,
+  WebhookEndpoint,
+  WebhookEndpointWithSecret,
+  WebhookEndpointWrite,
 } from './types.js'
 
 export interface WazapiClientOptions {
@@ -419,6 +422,47 @@ export class WazapiClient {
   /** Archives the opportunity (no permanent deletion); its `external_id` can be reused. (API 1.21) */
   async archiveCrmOpportunity(uuid: string): Promise<void> {
     await this.request<null>('DELETE', `/crm/opportunities/${encode(uuid)}`)
+  }
+
+  /** Webhooks of the integration that owns the token, without secrets. Requires `webhooks:read`. (API 1.46) */
+  async listWebhooks(): Promise<WebhookEndpoint[]> {
+    const body = await this.request<Envelope<WebhookEndpoint[]>>('GET', '/webhooks')
+    return body.data
+  }
+
+  /** Registers a webhook (up to 5 per integration); the secret is returned only here. Requires `webhooks:write`. (API 1.46) */
+  async createWebhook(input: WebhookEndpointWrite): Promise<WebhookEndpointWithSecret> {
+    const body = await this.request<Envelope<WebhookEndpointWithSecret>>('POST', '/webhooks', {
+      body: input,
+    })
+    return body.data
+  }
+
+  /** Replaces the URL and the events and reactivates the webhook; the secret stays. (API 1.46) */
+  async updateWebhook(uuid: string, input: WebhookEndpointWrite): Promise<WebhookEndpoint> {
+    const body = await this.request<Envelope<WebhookEndpoint>>('PUT', `/webhooks/${encode(uuid)}`, {
+      body: input,
+    })
+    return body.data
+  }
+
+  /** Deletes the webhook and its delivery history. (API 1.46) */
+  async deleteWebhook(uuid: string): Promise<void> {
+    await this.request<null>('DELETE', `/webhooks/${encode(uuid)}`)
+  }
+
+  /** Issues a new secret; the previous one keeps signing for 24 hours. (API 1.46) */
+  async rotateWebhookSecret(uuid: string): Promise<WebhookEndpointWithSecret> {
+    const body = await this.request<Envelope<WebhookEndpointWithSecret>>(
+      'POST',
+      `/webhooks/${encode(uuid)}/rotate-secret`
+    )
+    return body.data
+  }
+
+  /** Queues a `webhook.test` event to this webhook only. (API 1.46) */
+  async testWebhook(uuid: string): Promise<void> {
+    await this.request<unknown>('POST', `/webhooks/${encode(uuid)}/test`)
   }
 
   /**

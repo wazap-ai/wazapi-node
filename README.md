@@ -345,7 +345,22 @@ const changed = await wazapi.listStoreOrders({ updated_after: lastSync })
 
 ## Webhooks
 
-Wazapi POSTs events to the HTTPS endpoint you register in **Settings → Wazapi API**.
+Wazapi POSTs events to the HTTPS endpoint you register in **Settings → Wazapi API**,
+or through the API itself since 1.46 (scopes `webhooks:read` / `webhooks:write`):
+
+```ts
+const { uuid, secret } = await wazapi.createWebhook({
+  url: 'https://erp.example.com/wazapi',
+  events: ['message.received', 'message.send.failed'],
+})
+// `secret` is returned only here and by rotateWebhookSecret(uuid): store it now.
+```
+
+Each subscribed event requires the token to hold the scope that reads it
+(`message.*` needs `messages:read`, `message.send.failed` needs `messages:write`,
+`crm.opportunity.*` needs `crm:read`, …); a missing one fails with
+`insufficient_scope` and `details.events`. An integration holds up to 5 webhooks.
+
 The SDK ships the payload types; the union is discriminated on `type`, so narrowing
 `event.type` narrows `event.data` with it.
 
@@ -375,6 +390,10 @@ function handle(event: WazapiWebhookEvent) {
       return syncConversation(event.data)
     case 'flow.execution.updated':
       return event.data.error ? alert(event.data.error.code) : done()
+    case 'message.send.failed':
+      // Opt-in (API 1.46): a send that failed, even before Meta accepted it.
+      // `whatsapp_window_closed` means: send an approved template instead.
+      return retryWithTemplate(event.data.operation_uuid, event.data.error.code)
     case 'order.created':
       return createOrder(event.data)
     case 'webhook.test':
@@ -428,6 +447,7 @@ new WazapiClient({
 - `listCrmStages(params?)` (filters `group_uuid`, `external_id`), `createCrmStage(input)`, `updateCrmStage(uuid, patch)` (API 1.20), `deleteCrmStage(uuid, replacementStageUuid?)`, `reorderCrmStages(groupUuid, stageUuids)` (API 1.21) — scopes `crm:read` / `crm:write`
 - `listCrmOpportunities(params)` (filters `group_uuid`, `stage_uuid`, `contact_uuid`, `contact_external_id`, `external_id`; sync with `updated_after` + `include_archived`), `getCrmOpportunity(uuid)`, `createCrmOpportunity(input)`, `updateCrmOpportunity(uuid, patch)` (moves with `stage_uuid`/`stage_external_id`), `archiveCrmOpportunity(uuid)` — opportunities with your system's `external_id`, assignee by `assigned_user_external_id` or `assigned_user_email` (API 1.21)
 - `getOperation(uuid)`, `waitForOperation(uuid, options?)`
+- `listWebhooks()`, `createWebhook(input)`, `updateWebhook(uuid, input)`, `deleteWebhook(uuid)`, `rotateWebhookSecret(uuid)`, `testWebhook(uuid)` — the token's own integration (API 1.46)
 - `listStoreProducts(params)` (filter `external_id`, API 1.14; `category_uuid` and `active`, API 1.19), `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, input)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(items)` (matches by `import_handle`, else by `external_id` since API 1.16), `listStoreCategories(params?)`, `createStoreCategory(input)`, `updateStoreCategory(uuid, input)`, `deleteStoreCategory(uuid)` (API 1.15), `listStoreOrders(params)`
 
 See the OpenAPI contract at `https://wazapi.io/api/openapi/v1.json` for the full
