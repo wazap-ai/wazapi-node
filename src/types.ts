@@ -3,10 +3,40 @@
 
 export type PublicApiScope =
   | 'channels:read'
+  /** Retire or un-retire a channel (API 1.37). */
+  | 'channels:write'
   | 'contacts:read'
   | 'contacts:write'
   | 'contacts:block'
   | 'conversations:read'
+  /** Write conversation custom field values (API 1.25). */
+  | 'conversations:write'
+  /** Read conversation select-field options (API 1.25). Never granted implicitly. */
+  | 'fields:read'
+  /** Replace conversation select-field options (API 1.25). */
+  | 'fields:write'
+  /** Read support groups and their distribution report (API 1.24). */
+  | 'groups:read'
+  /** Edit group waiting and distribution options (API 1.24). */
+  | 'groups:write'
+  /** Read entry settings and the `supported_entries` of flows, keywords and agents (API 1.26). */
+  | 'entries:read'
+  | 'entries:write'
+  /** Read company settings such as the stalled bot watchdog (API 1.28). */
+  | 'settings:read'
+  /** Write company settings, company queries and agent query permissions. */
+  | 'settings:write'
+  /** Read AI agents, their usage, guard rules, company queries and AI duty. */
+  | 'ai_agents:read'
+  /** Write guard rules and AI duty, and run paid AI summary previews. */
+  | 'ai_agents:write'
+  /** Read AI summary settings and costs (API 1.29). */
+  | 'ai_summaries:read'
+  | 'ai_summaries:write'
+  /** List knowledge sources. */
+  | 'knowledge:read'
+  /** Create, edit and reindex URL knowledge sources. */
+  | 'knowledge:write'
   | 'messages:read'
   | 'messages:write'
   | 'templates:read'
@@ -47,13 +77,52 @@ export interface ChannelCapabilities {
   start_flow: boolean
 }
 
-export interface Channel {
+export type ChannelProvider = 'whatsapp' | 'instagram' | 'messenger' | 'webchat'
+
+/** Who caused a channel transition: a person (by uuid), Meta or Wazapi itself. */
+export interface ChannelActor {
+  type: 'person' | 'Meta' | 'system'
+  uuid: string | null
+}
+
+/** Meta error codes treated as account-level send rejections. */
+export type ChannelAccountRejectionCode = 131042 | 131031 | 368 | 131048
+
+/**
+ * Latest account-level send rejection. Disappears 24h after the latest
+ * rejection or after Meta accepts a template (acceptance is not delivery).
+ */
+export interface ChannelAccountRejection {
+  code: ChannelAccountRejectionCode
+  reason: string
+  occurredAt: string
+  expiresAt: string
+  active: boolean
+}
+
+/** Administrator-marked retirement; reconnecting the channel clears it. (API 1.37) */
+export interface ChannelRetirement {
+  isRetired: boolean
+  retiredAt: string | null
+  retiredBy: { uuid: string | null; name: string | null } | null
+}
+
+export interface Channel extends ChannelRetirement {
   uuid: string
-  provider: 'whatsapp'
+  /** Instagram and Messenger channels are listed since API 1.32. */
+  provider: ChannelProvider
   display_name: string | null
   phone_number: string | null
   status: string
   capabilities: ChannelCapabilities
+  /** Last recorded transition; `null` when no transition was recorded. (API 1.32) */
+  statusChangedAt: string | null
+  statusReason: string | null
+  statusChangedBy: ChannelActor | null
+  downSince: string | null
+  /** Observed channel health, separate from the provider connection `status`. */
+  healthStatus: 'healthy' | 'degraded' | 'critical' | 'unknown'
+  accountRejection?: ChannelAccountRejection | null
 }
 
 export interface Contact {
@@ -136,6 +205,47 @@ export type ContactTrackingWrite = Partial<Record<ContactTrackingKey, string>>
  */
 export type ContactTracking = Record<string, string>
 
+/**
+ * How a message or conversation came in. Legacy rows read as `direct`.
+ * Precedence: comment > mention > story_reply > ad > direct. (API 1.26)
+ */
+export type EntryKind = 'direct' | 'ad' | 'story_reply' | 'mention' | 'comment'
+
+/**
+ * Entries a flow accepts per provider. A missing or empty list means all;
+ * default flows accept `comment` only when listed. (API 1.26, `webchat` 1.45)
+ */
+export interface FlowEntries {
+  whatsapp?: ('direct' | 'ad')[]
+  messenger?: ('direct' | 'ad')[]
+  instagram?: EntryKind[]
+  webchat?: 'direct'[]
+}
+
+/**
+ * The flow's own stalled-bot rule. `default` inherits the nearest non-default
+ * caller (up to 10), then the company setting.
+ */
+export interface FlowMonitoringRule {
+  mode: 'default' | 'disabled' | 'start_flow' | 'assign_group'
+  minutes?: number
+  flowUuid?: string | null
+  groupUuid?: string | null
+  /** `null` or omitted inherits the company fallback. */
+  fallbackGroupUuid?: string | null
+}
+
+/** The rule that applies; without `flow_session_uuid` the flow is evaluated standalone. */
+export interface EffectiveFlowMonitoringRule {
+  origin: 'flow' | 'caller' | 'company' | 'none'
+  disabled: boolean
+  sourceFlowUuid: string | null
+  sourceFlowName: string | null
+  chainWarning: 'cycle' | 'depth_limit' | null
+  /** Effective camelCase stale-session settings. */
+  settings: Record<string, unknown> | null
+}
+
 export interface Flow {
   uuid: string
   name: string
@@ -143,6 +253,10 @@ export interface Flow {
   supported_providers: string[]
   created_at: string | null
   updated_at: string | null
+  supported_entries?: FlowEntries
+  monitoring_rule?: FlowMonitoringRule
+  effective_monitoring_rule?: EffectiveFlowMonitoringRule
+  monitoring_warnings?: string[]
 }
 
 export type TemplateStatus =
@@ -265,6 +379,12 @@ export interface Conversation {
   last_message_at: string | null
   created_at: string | null
   updated_at: string | null
+  entry_kind?: EntryKind
+  /**
+   * First inbound still awaiting a successful human reply, whatever the
+   * unanswered mode. Notes, bot/AI and API/MCP sends do not clear it.
+   */
+  awaiting_human_since: string | null
 }
 
 /**
@@ -279,6 +399,8 @@ export interface ConversationDetail extends Conversation {
   message_count: number
   /** Present only when requested with `include: 'messages'`. */
   messages?: Message[]
+  /** Read-only custom values stored on the conversation. */
+  customFields?: Record<string, unknown>
 }
 
 /** One question → answer of a WhatsApp form reply (API 1.43). */
@@ -308,7 +430,8 @@ export interface Message {
    */
   type: string
   status: string
-  content: Record<string, unknown>
+  /** `context` is set when the message quotes another one (API 1.28). */
+  content: Record<string, unknown> & { context?: MessageQuoteContext }
   /**
    * Transcription of an inbound audio message, when available. Populated
    * asynchronously after transcription; also delivered via the
@@ -327,6 +450,20 @@ export interface Message {
   provider_message_id: string | null
   created_at: string | null
   updated_at: string | null
+  entry_kind?: EntryKind
+}
+
+/**
+ * The quoted message of a reply: links, not a copy of its text. A later
+ * deletion may leave a `messageUuid` whose message is unavailable. (API 1.28)
+ */
+export interface MessageQuoteContext {
+  /** Provider id of the quoted WhatsApp message. */
+  providerMessageId: string
+  /** Resolved only in the same conversation; `null` when unavailable at receipt. */
+  messageUuid: string | null
+  /** Sender identifier WhatsApp supplies on received context. */
+  from?: string
 }
 
 export type OperationStatus =
@@ -399,6 +536,11 @@ export type SendMessageInput =
       recipient: Recipient
       type: 'text'
       content: { text: string }
+      /**
+       * Quote a message of this recipient's current conversation on this channel;
+       * an invalid target answers `422 reply_target_invalid`. (API 1.28)
+       */
+      replyToMessageUuid?: string
     }
   | {
       channel_uuid?: string
@@ -406,6 +548,21 @@ export type SendMessageInput =
       type: 'template'
       content: TemplateSendContent
     }
+  | {
+      channel_uuid?: string
+      recipient: Recipient
+      type: 'media'
+      content: MediaSendContent
+      replyToMessageUuid?: string
+    }
+
+/** A file of the company library sent as WhatsApp media. (API 1.31) */
+export interface MediaSendContent {
+  /** Image, video, document or audio of the file library; no external URL is downloaded. */
+  media_uuid: string
+  /** Image, video and document only; audio answers `media_caption_unsupported`. */
+  caption?: string
+}
 
 export interface ExecuteFlowInput {
   /** Optional with a single channel — see `SendMessageInput`. */
@@ -902,6 +1059,12 @@ export type WebhookEventType =
   | 'crm.opportunity.updated'
   | 'crm.opportunity.stage_changed'
   | 'crm.opportunity.archived'
+  | 'conversation.assigned'
+  | 'conversation.status_changed'
+  | 'conversation.fields_changed'
+  | 'conversation.ai_summary'
+  | 'channel.status_changed'
+  | 'channel.account_status_changed'
   | 'webhook.test'
 
 /**
@@ -928,6 +1091,7 @@ export interface MessageReceivedData extends WebhookContactRefs {
   type: string
   content: Record<string, unknown>
   status: string
+  entry_kind?: EntryKind
 }
 
 /**
@@ -1006,6 +1170,7 @@ export interface ConversationCreatedData extends WebhookContactRefs {
   contact_uuid: string
   channel_uuid: string
   status: string
+  entry_kind?: EntryKind
 }
 
 /** `unread_count` is only present when an inbound message triggered the update. */
@@ -1154,6 +1319,166 @@ export type CrmOpportunityArchivedEvent = WebhookEnvelope<
   CrmOpportunityEventData
 >
 
+/** Who made a conversation change; `integration_uuid` is set for `api` writes. */
+export interface ConversationWebhookActor {
+  type: 'user' | 'flow' | 'ai_agent' | 'api' | 'mcp' | 'system'
+  user: { uuid: string; name: string | null } | null
+  integration_uuid: string | null
+}
+
+export type ConversationStatus = 'open' | 'pending' | 'resolved'
+
+export interface ConversationWebhookSnapshot {
+  uuid: string
+  status: ConversationStatus
+  channel: { uuid: string; provider: string } | null
+}
+
+/** `external_id` is your integration's link for the contact, resolved at delivery. */
+export interface ConversationWebhookContact {
+  uuid: string
+  external_id: string | null
+}
+
+/**
+ * Opt-in conversation transitions (API 1.24): staged with the write and
+ * delivered within about a minute, never for unchanged values. Not ordered —
+ * fetch the conversation when reconciling.
+ */
+export interface ConversationAssignedData {
+  conversation: ConversationWebhookSnapshot
+  contact: ConversationWebhookContact
+  actor: ConversationWebhookActor
+  group: { uuid: string; name: string } | null
+  previous_group: { uuid: string; name: string } | null
+  assignee: { uuid: string; name: string | null; email: string } | null
+  previous_assignee: { uuid: string; name: string | null; email: string } | null
+}
+
+/** The initial status of a new conversation is not a transition. (API 1.24) */
+export interface ConversationStatusChangedData {
+  conversation: ConversationWebhookSnapshot
+  contact: ConversationWebhookContact
+  actor: ConversationWebhookActor
+  status: ConversationStatus
+  previous_status: ConversationStatus
+}
+
+/** Value of a text, number or date field; `null` when empty. */
+export interface ConversationFieldSnapshot {
+  value: unknown
+}
+
+/** Value of a select field with its label at the time of the change. */
+export interface ConversationSelectSnapshot {
+  value: string | null
+  label: string | null
+}
+
+export interface ConversationFieldChange {
+  key: string
+  type: string
+  before: ConversationFieldSnapshot | ConversationSelectSnapshot
+  after: ConversationFieldSnapshot | ConversationSelectSnapshot
+}
+
+/**
+ * Committed custom field delta of a conversation (API 1.25). No event for
+ * invalid writes, unchanged values or option list changes.
+ */
+export interface ConversationFieldsChangedData {
+  conversation: {
+    uuid: string
+    status: string
+    channel: { uuid: string; provider: string }
+    /** Only `uuid_crm`, when present. */
+    fields_snapshot?: { uuid_crm: unknown }
+  }
+  contact: ConversationWebhookContact
+  changes: ConversationFieldChange[]
+  actor: ConversationWebhookActor
+}
+
+export interface AiSummaryUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+  cacheReadTokens?: number
+  cacheWriteTokens?: number
+}
+
+/**
+ * An internal AI summary completed (API 1.29) — never a customer message.
+ * Deduplicate on `summary.uuid`; `opportunity` is `null` without an
+ * unambiguous match, so skip CRM follow-ups without `opportunity.external_id`.
+ */
+export interface ConversationAiSummaryData {
+  actor: ConversationWebhookActor
+  trigger_actor: ConversationWebhookActor
+  trigger: AiSummaryTrigger
+  conversation: { uuid: string }
+  opportunity: { uuid?: string; external_id?: string | null } | null
+  summary: {
+    uuid: string
+    text: string
+    date: string
+    model: string
+    usage: AiSummaryUsage
+    cost_usd_micros: number
+    cost_currency: 'USD'
+    after_message_id: string
+    through_message_id: string
+  }
+}
+
+/** A channel connection or critical health transition; repeated states emit nothing. (API 1.32) */
+export interface ChannelStatusChangedData {
+  channel_uuid: string
+  provider: ChannelProvider
+  status: 'connected' | 'disconnected' | 'critical'
+  previous_status: string | null
+  status_changed_at: string
+  status_reason: string | null
+  status_changed_by: ChannelActor
+}
+
+/** Meta started or stopped rejecting sends for the whole WhatsApp account. (API 1.32) */
+export interface ChannelAccountStatusChangedData {
+  channel_uuid: string
+  provider: 'whatsapp'
+  status: 'account_rejected' | 'account_recovered'
+  code: ChannelAccountRejectionCode | null
+  reason: string
+  occurred_at: string
+  actor: ChannelActor
+  expires_at: string | null
+}
+
+export type ConversationAssignedEvent = WebhookEnvelope<
+  'conversation.assigned',
+  ConversationAssignedData
+>
+export type ConversationStatusChangedEvent = WebhookEnvelope<
+  'conversation.status_changed',
+  ConversationStatusChangedData
+>
+export type ConversationFieldsChangedEvent = WebhookEnvelope<
+  'conversation.fields_changed',
+  ConversationFieldsChangedData
+>
+export type ConversationAiSummaryEvent = WebhookEnvelope<
+  'conversation.ai_summary',
+  ConversationAiSummaryData
+>
+export type ChannelStatusChangedEvent = WebhookEnvelope<
+  'channel.status_changed',
+  ChannelStatusChangedData
+>
+export type ChannelAccountStatusChangedEvent = WebhookEnvelope<
+  'channel.account_status_changed',
+  ChannelAccountStatusChangedData
+>
+
 /** Discriminated on `type` — narrow it and `data` narrows with it. */
 export type WazapiWebhookEvent =
   | MessageReceivedEvent
@@ -1171,6 +1496,12 @@ export type WazapiWebhookEvent =
   | CrmOpportunityUpdatedEvent
   | CrmOpportunityStageChangedEvent
   | CrmOpportunityArchivedEvent
+  | ConversationAssignedEvent
+  | ConversationStatusChangedEvent
+  | ConversationFieldsChangedEvent
+  | ConversationAiSummaryEvent
+  | ChannelStatusChangedEvent
+  | ChannelAccountStatusChangedEvent
   | WebhookTestEvent
 
 export interface DiscountRules {
@@ -1242,3 +1573,769 @@ export interface WebhookEndpointWrite {
   /** `webhook.test` is always added. Each event needs the token scope that reads it. */
   events: WebhookEventType[]
 }
+
+/* ── CRM upsert by external id (API 1.27) ──────────────────────────────── */
+
+/**
+ * Send exactly one contact reference (`contact_uuid`, `contact_external_id` or
+ * `contact_phone`) and one stage reference (`stage_uuid` or `stage_external_id`).
+ * Fields outside this contract (value, notes, due date) keep their value.
+ */
+export interface CrmOpportunityUpsert {
+  /** Destination board; the fallback when `group_mode` finds no open conversation. */
+  group_uuid: string
+  /** Use the group of the contact's most recently updated open conversation. */
+  group_mode?: 'contact_open_conversation'
+  /** 2 to 180 characters. */
+  title: string
+  contact_uuid?: string
+  contact_external_id?: string
+  /** Finds an existing contact like `listContacts({ phone })`; never creates one. */
+  contact_phone?: string
+  stage_uuid?: string
+  stage_external_id?: string
+  /**
+   * Omitted keeps the current assignee when valid on the destination board;
+   * `null` clears it; an unknown member clears it and warns `invalid_assignee`.
+   */
+  assigned_user_email?: string | null
+  assigned_user_external_id?: string | null
+  /** Required when creating in or moving to a `lost` stage. */
+  outcome_reason?: string | null
+}
+
+export interface CrmOpportunityUpsertItem extends CrmOpportunityUpsert {
+  /** Company-wide key among active opportunities; archived ones do not reserve it. */
+  external_id: string
+}
+
+export type CrmOpportunityUpsertOutcome = 'created' | 'updated' | 'unchanged' | 'moved_group'
+
+export interface CrmOpportunityUpsertResult {
+  /** `unchanged` writes nothing and emits no webhook. */
+  result: CrmOpportunityUpsertOutcome
+  opportunity: CrmOpportunity
+  warnings: 'invalid_assignee'[]
+}
+
+/** One item of `upsertCrmOpportunitiesBatch`, at the same `index` as sent. */
+export type CrmOpportunityUpsertBatchResult =
+  | ({ index: number; external_id: string | null } & CrmOpportunityUpsertResult)
+  | {
+      index: number
+      external_id: string | null
+      error: { status: number; code: string; message: string; details?: unknown }
+    }
+
+/* ── Groups (API 1.24) ─────────────────────────────────────────────────── */
+
+export type GroupDistributionStrategy = 'least_busy' | 'round_robin' | 'random' | 'balanced_daily'
+
+/** A support group (the same group is a CRM board). */
+export interface SupportGroup {
+  uuid: string
+  name: string
+  /** Visual waiting alert in minutes; never schedules a transfer. */
+  wait_alert_minutes: number | null
+  /** `null` keeps the legacy distribution. (API 1.27) */
+  distribution_strategy: GroupDistributionStrategy | null
+  /** FIFO queue for assignments that end without a person. (API 1.27) */
+  queue_when_unavailable: boolean
+  /** With the queue on, distribution waits for this schedule; `null` = any time. */
+  distribution_schedule_uuid: string | null
+  /** Queue deliveries per person per minute; `null` removes the limit. */
+  queue_batch_per_agent: number | null
+  /** Minutes the queue waits after each schedule opening; 0 disables. (API 1.39) */
+  queue_opening_delay_minutes: number
+  /** Active queue conversations per person; `null` removes the ceiling. (API 1.39) */
+  queue_max_per_agent: number | null
+  /** Serve conversations inside the 24h window first; false keeps FIFO. (API 1.41) */
+  queue_open_window_first: boolean
+}
+
+/** Partial update: an omitted field keeps its value, `null` clears a nullable one. */
+export type SupportGroupPatch = Partial<Omit<SupportGroup, 'uuid' | 'name'>>
+
+export interface GroupDistributionReport {
+  group_uuid: string
+  /** Calendar day in the company timezone. */
+  day: string
+  timezone: string
+  history_note: string
+  people: {
+    user_uuid: string
+    name: string | null
+    received: number
+    open_now: number
+    first_online_at: string | null
+    received_by_origin: {
+      queue: number
+      distribution: number
+      transfer: number
+      manual: number
+      flow: number
+      ai: number
+      ownerless_fallback?: number
+    }
+  }[]
+  queue: {
+    entered: number
+    waiting_now: number
+    delivered: number
+    average_wait_seconds: number | null
+    maximum_wait_seconds: number | null
+    /** True when more than the first 1000 deliveries happened. */
+    deliveries_truncated: boolean
+    deliveries: {
+      conversation_uuid: string
+      user_uuid: string | null
+      enqueued_at: string
+      delivered_at: string
+    }[]
+    /** `waiting_open_window + waiting_closed_window = waiting_now`. */
+    waiting_open_window: number
+    waiting_closed_window: number
+  }
+}
+
+/* ── Custom fields and the conversation panel (API 1.24–1.28) ──────────── */
+
+export interface FieldOption {
+  value: string
+  label: string
+}
+
+export type CustomFieldType = 'text' | 'number' | 'date' | 'select'
+
+/** Attribute names are camelCase. */
+export interface CustomFieldDefinition {
+  uuid: string
+  key: string
+  label: string
+  type: CustomFieldType
+  scope: 'contact' | 'conversation'
+  description?: string | null
+  required?: boolean
+  active?: boolean
+  showToClient?: boolean
+  section: string | null
+  /** Lower first; `null` sorts by label. */
+  position: number | null
+  multiline: boolean
+  hideWhenEmpty: boolean
+  /** Blocks edits in the panel only; flow, AI, API and MCP writes still work. */
+  readOnly?: boolean
+  /** Unique values; a repeated label cannot be used to write a value. */
+  options: FieldOption[]
+  /** HTTPS URL with `{value}` outside its host. */
+  linkTemplate?: string | null
+  linkLabel?: string | null
+  /** Hide when equal to the native contact name/e-mail. */
+  hideWhenEqualsNative?: 'name' | 'email' | null
+}
+
+type CustomFieldWritable = Partial<
+  Omit<CustomFieldDefinition, 'uuid' | 'key' | 'label' | 'type'>
+> & {
+  /** Adds or updates options by value and removes the listed values. */
+  optionsPatch?: { upsert?: FieldOption[]; remove?: string[] }
+}
+
+export interface CustomFieldCreate extends CustomFieldWritable {
+  key: string
+  label: string
+  type: CustomFieldType
+}
+
+/** Partial update: an omitted attribute keeps its value. */
+export interface CustomFieldPatch extends CustomFieldWritable {
+  label?: string
+  type?: CustomFieldType
+}
+
+export interface ConversationFieldOptions {
+  key: string
+  type: 'select'
+  options: FieldOption[]
+}
+
+type PanelVisibility = 'show' | 'hide'
+
+/** Conversation context panel configuration. Configuration only: no contact value changes. */
+export interface ConversationPanel {
+  cards: {
+    key: string
+    title: string
+    icon:
+      | 'UserIcon'
+      | 'UserLove01Icon'
+      | 'Target01Icon'
+      | 'Megaphone01Icon'
+      | 'BrainIcon'
+      | 'InformationCircleIcon'
+    order: number
+  }[]
+  /** Omitted native items keep their original position; phone stays read-only. */
+  nativeItems: {
+    key: 'name' | 'phone' | 'email' | 'organization' | 'crmStage'
+    section: string
+    position: number
+    width?: 'full' | 'half'
+    hideWhenEmpty?: boolean
+  }[]
+  detailsReadOnly?: boolean
+  contactBlock?: PanelVisibility
+  contactTags?: PanelVisibility
+  conversationTags?: PanelVisibility
+  waitingBadge?: 'unassigned' | 'always'
+  /** Read-only diagnostics. */
+  warnings?: {
+    code: 'unsectioned_contact_fields'
+    fields: { uuid: string; key: string; label: string }[]
+  }[]
+  topCards?: boolean
+  detailsCrmStage?: PanelVisibility
+  wrapValues?: boolean
+  fieldItems?: { fieldUuid: string; width?: 'full' | 'half'; placement?: 'body' | 'header' }[]
+  transferTargets?: 'members' | 'all'
+  /** Find a Brazilian mobile with or without the ninth digit. (API 1.28) */
+  phoneEquivalenceBrNinthDigit?: boolean
+}
+
+/** Omitted options keep their value; a supplied array replaces its list. */
+export type ConversationPanelPatch = Partial<Omit<ConversationPanel, 'warnings'>>
+
+/* ── Entries (API 1.26) ────────────────────────────────────────────────── */
+
+export interface EntrySettings {
+  entrySplit: 'none' | 'public_private'
+}
+
+/** `supported_entries` of a keyword or AI agent. Keyword: empty means all; agent: empty denies all. */
+export interface EntryTargets {
+  uuid: string
+  supported_entries: EntryKind[]
+}
+
+export interface FlowEntryTargets {
+  uuid: string
+  supported_entries: FlowEntries
+}
+
+/* ── Inbox and automation settings ─────────────────────────────────────── */
+
+export interface InboxResponseSettings {
+  /** What counts as unanswered. Defaults to `last_message`. */
+  unansweredMode: 'last_message' | 'human_reply' | 'team_reply'
+  /** Company overdue threshold; `null` disables, omitted on update keeps it. */
+  overdueMinutes?: number | null
+}
+
+export interface TeamReplyRecalculation {
+  dryRun: boolean
+  scanned: number
+  changed: number
+  waiting: number
+  unknown: number
+  /** Call again with this cursor until it is `null`. */
+  nextCursor: string | null
+  changes: {
+    conversationUuid: string
+    before: string | null
+    after: string | null
+    changed: boolean
+    reason:
+      | 'recorded'
+      | 'never_team'
+      | 'answered_or_no_inbound'
+      | 'ai_handoff'
+      | 'timeout_no_return'
+      | 'inbound_with_person'
+      | 'unknown_preserved'
+  }[]
+}
+
+/** Stalled bot watchdog, off by default. (API 1.28) */
+export interface StaleSessionSettings {
+  /** `null` disables the watchdog. */
+  stale_session_minutes: number | null
+  stale_session_action: 'start_flow' | 'assign_group' | null
+  stale_session_flow_uuid: string | null
+  stale_session_group_uuid: string | null
+  /** Group for a closed messaging window; `null` only records the block. */
+  stale_session_fallback_group_uuid: string | null
+  stale_session_max_age_hours: number
+  stale_session_close_old: boolean
+}
+
+/** Partial update; takes effect on the next minute sweep. */
+export type StaleSessionSettingsPatch = Partial<StaleSessionSettings>
+
+/** Group for conversations with no person and no group. (API 1.33) */
+export interface OwnerlessFallbackSettings {
+  defaultGroupUuid: string | null
+  /** Per-channel overrides; they win over the default. */
+  channels: { whatsapp?: string | null; instagram?: string | null; messenger?: string | null }
+  groups: { uuid: string; name: string }[]
+  warnings: {
+    groupUuid: string
+    name: string | null
+    reason: 'inactive_group' | 'invalid_group'
+  }[]
+}
+
+export type OwnerlessFallbackPatch = Partial<
+  Pick<OwnerlessFallbackSettings, 'defaultGroupUuid' | 'channels'>
+>
+
+export interface OwnerlessFallbackApplication {
+  dryRun: boolean
+  total: number
+  applicable: number
+  applied: number
+  skipped: number
+  items: {
+    conversationUuid: string
+    channel: string
+    groupUuid: string | null
+    groupName: string | null
+    reason: string
+  }[]
+}
+
+/* ── Channels (API 1.32, 1.37) ─────────────────────────────────────────── */
+
+export type ChannelEventKind =
+  | 'status_changed'
+  | 'inbound_dropped'
+  | 'account_rejected'
+  | 'account_recovered'
+  | 'retirement_changed'
+
+export interface ChannelEvent {
+  uuid: string
+  kind: ChannelEventKind
+  type: 'direct' | 'comment' | 'other' | null
+  senderIdentifier: string | null
+  providerEventId: string | null
+  status: string | null
+  previousStatus: string | null
+  reason: string | null
+  actor: ChannelActor
+  occurredAt: string
+  providerOccurredAt: string | null
+  downSince: string | null
+  isMessage: boolean
+}
+
+/** Newest first. Dropped inbound metadata is kept 30 days; retirement events are durable. */
+export interface ChannelEventPage {
+  items: ChannelEvent[]
+  /** Pass as `after` for the next page. */
+  nextCursor: string | null
+  retentionDays: 30
+}
+
+export interface ChannelEventListParams {
+  after?: string
+  limit?: number
+  kind?: ChannelEventKind
+}
+
+export interface ChannelRetirementResult extends ChannelRetirement {
+  channelUuid: string
+}
+
+/* ── Messages ──────────────────────────────────────────────────────────── */
+
+export interface MessageReactionResult {
+  /** The provider accepted the reaction; not proof of delivery. */
+  ok: boolean
+  error: string | null
+  conversation_uuid: string
+  message_uuid: string
+  reactions: { emoji: string; actor_user_id: number | null; direction: 'inbound' | 'outbound' }[]
+}
+
+/* ── AI summaries (API 1.29) ───────────────────────────────────────────── */
+
+export type AiSummaryTrigger = 'stage_changed' | 'assigned' | 'resolved' | 'nightly'
+
+/** Opt-in per company; only messages from activation onward are summarized. */
+export interface AiSummarySettings {
+  enabled: boolean
+  model: string
+  triggers: AiSummaryTrigger[]
+  minLeadMessages: number
+  minAgentMessages: number
+  maxLines: number
+  maxInputChars: number
+  dailyBudgetUsd: number
+  timezone: string
+  nightlyHour: number
+  /** `field` replaces the conversation field `fieldKey`; `note` keeps timeline notes. */
+  display: 'field' | 'note'
+  /** An active text field with conversation scope; never auto-created. */
+  fieldKey: string
+  /** Read-only diagnostics: automatic summaries skip a missing or invalid field. */
+  warnings: {
+    code: 'summary_field_missing' | 'summary_field_inactive' | 'summary_field_not_text'
+    fieldKey: string
+  }[]
+}
+
+/** Omitted fields keep their value; enabling requires the provider connected. */
+export type AiSummarySettingsPatch = Partial<Omit<AiSummarySettings, 'warnings'>>
+
+export interface AiSummaryCall {
+  uuid?: string
+  model?: string
+  status?: string
+  day?: string
+  usage?: AiSummaryUsage | null
+  /** Estimated USD micros when `cost_known`; otherwise a zero placeholder. Decimal string. */
+  cost_micros?: string | null
+  reserved_micros?: string
+  error_code?: string | null
+  created_at?: string
+  source?: 'automatic' | 'preview'
+  /** False: zero means unknown consumption, not a free call. */
+  cost_known?: boolean
+  zero_cost_reason?: string | null
+  error_reason?: string | null
+  /** Counts and lengths only; never text or customer data. */
+  failure_diagnostic?: Record<string, unknown> | null
+}
+
+/** Money and counters are decimal strings. */
+export interface AiSummaryCostReport {
+  days: { day?: string; calls?: string; costMicros?: string | null; reservedMicros?: string }[]
+  calls: AiSummaryCall[]
+  budgetAlertDay: string | null
+  previews: (AiSummaryCall & {
+    historical_summary_uuid?: string | null
+    provider_attempted?: boolean
+  })[]
+  /** Preview totals; unknown costs are excluded from `costMicros`. */
+  previewDays: {
+    day?: string
+    calls?: string
+    costMicros?: string | null
+    reservedMicros?: string
+    unknownCostCalls?: string
+  }[]
+  /** Budget use including legacy previews and reservations; never add to `previewDays`. */
+  previewBudgetDays: { day?: string; chargedOrReservedMicros?: string }[]
+}
+
+export interface AiSummaryPreviewInput {
+  conversationUuid: string
+  /** Replays a historical summary call with its frozen window and clock. */
+  summaryUuid?: string
+  model?: string
+  instructions?: string
+}
+
+/** Paid call that writes nothing: no note, webhook or cursor change. */
+export interface AiSummaryPreview {
+  status: 'completed' | 'skipped' | 'failed' | 'uncertain'
+  reason?: string
+  lines: string[]
+  model: string
+  usage: Record<string, unknown> | null
+  costUsdMicros: number
+  costUsd: number
+  input: {
+    messages: { role: 'system' | 'user'; content: string }[]
+    afterMessageId: string
+    throughMessageId: string
+    now: string | null
+    timezone: string
+  }
+  previewUuid: string
+  /** False: zero cost is unknown consumption and the reservation remains. */
+  costKnown: boolean
+  zeroCostReason: string | null
+  reservedUsdMicros: number
+  errorCode?: string
+  failureDiagnostic?: Record<string, unknown> | null
+}
+
+/* ── AI agents (API 1.35–1.37) ─────────────────────────────────────────── */
+
+/** Tariff-based estimate from provider usage, not the provider invoice. (API 1.35) */
+export interface AiAgentUsage {
+  currency: 'USD'
+  cost_basis: 'catalog_estimate'
+  timezone: string
+  days: number
+  since: string
+  until: string
+  daily: AiAgentUsageDay[]
+}
+
+export interface AiAgentUsageDay {
+  date: string
+  agent_uuid: string
+  agent_name: string
+  turns: number
+  prompt_tokens: number
+  output_tokens: number
+  classified_turns: number
+  unclassified_turns: number
+  cost_cents: number
+  classified_cost_cents: number
+  unclassified_cost_cents: number
+  /** The cache counters cover classified turns only; `null` when none was captured. */
+  input_tokens: number | null
+  cache_write_tokens: number | null
+  cache_read_tokens: number | null
+  cache_write_1h_tokens: number | null
+  /** Guard rewrite attempts, included in `turns` and `cost_cents`. */
+  guard_rewrite_turns: number
+  guard_rewrite_cost_cents: number
+}
+
+export interface AiAgentUsageParams {
+  /** Company-local calendar days, today included. */
+  days?: number
+  agent_uuid?: string
+}
+
+export interface AiAgentQueryResult {
+  agent: { uuid: string; allowedCompanyQueryUuids: string[] }
+}
+
+/** Plantão da IA: `sombra` keeps a private record, `nota` an internal note; it never sends. (API 1.37) */
+export interface AiDutySettings {
+  mode: 'desligado' | 'sombra' | 'nota'
+  /** An active agent of the company, required when enabled. */
+  agentUuid: string | null
+  /** WhatsApp only; an empty list excludes every conversation. */
+  channels: 'whatsapp'[]
+  /** Company-local daily cap of attempts. */
+  dailyLimit: number
+}
+
+export interface ReplyGuardCondition {
+  patterns: string[]
+  lastMessages: number
+  operator: 'absent' | 'present'
+}
+
+export type ReplyGuardFinalAction = { type: 'safe_text'; text: string } | { type: 'handoff' }
+
+/** Reply guard of an AI agent (API 1.36). `ensaio` only logs hits; `ativo` rewrites. */
+export interface ReplyGuardRule {
+  uuid: string
+  name: string
+  kind: 'text_pattern' | 'past_date'
+  /** Literal patterns; `{integer}` and `{number}` are numeric markers. No regular expressions. */
+  patterns: string[]
+  minMatches: number
+  /** Suppress a match when one of these appears in the same sentence. */
+  ignorePatterns: string[]
+  /** `past_date` words before a bare day; defaults to dia/day. */
+  dayWords?: string[]
+  condition: ReplyGuardCondition | null
+  correction: string
+  finalAction: ReplyGuardFinalAction
+  mode: 'ensaio' | 'ativo'
+  enabled: boolean
+  createdAt: string
+  updatedAt: string | null
+}
+
+/** A new rule always starts in `ensaio`; at most 50 per agent. */
+export interface ReplyGuardRuleCreate {
+  name: string
+  kind: ReplyGuardRule['kind']
+  patterns: string[]
+  minMatches?: number
+  ignorePatterns?: string[]
+  dayWords?: string[]
+  condition?: ReplyGuardCondition | null
+  correction: string
+  finalAction: ReplyGuardFinalAction
+  mode?: 'ensaio'
+  enabled?: boolean
+}
+
+/** Only supplied fields change; `condition: null` clears it. */
+export type ReplyGuardRulePatch = Partial<Omit<ReplyGuardRuleCreate, 'mode'>> & {
+  mode?: 'ensaio' | 'ativo'
+}
+
+export interface ReplyGuardRules {
+  agentUuid: string
+  items: ReplyGuardRule[]
+}
+
+export interface ReplyGuardSaved {
+  agentUuid: string
+  rule: ReplyGuardRule
+}
+
+export interface ReplyGuardHit {
+  uuid: string
+  ruleUuid: string
+  ruleName: string
+  conversationUuid: string | null
+  mode: 'ensaio' | 'ativo'
+  /** A snippet only, never the full reply or contact history. */
+  snippet: string
+  phase: 'initial' | 'rewrite'
+  rewrote: boolean
+  rewriteFailed: boolean
+  outcome: 'observed' | 'rewritten' | 'safe_text' | 'handoff'
+  createdAt: string
+}
+
+export interface ReplyGuardHits {
+  agentUuid: string
+  since: string
+  until: string
+  page: number
+  limit: number
+  hasMore: boolean
+  items: ReplyGuardHit[]
+}
+
+/** Defaults to the last 90 days; the period is at most 90 days. */
+export interface ReplyGuardHitParams {
+  ruleUuid?: string
+  /** Inclusive ISO start. */
+  since?: string
+  /** Inclusive ISO end. */
+  until?: string
+  page?: number
+  limit?: number
+}
+
+/* ── Company queries (API 1.37) ────────────────────────────────────────── */
+
+export interface CompanyQueryParameter {
+  name: string
+  description: string
+  required: boolean
+  enum?: string[]
+  maxLength?: number
+}
+
+/** A fixed HTTPS GET an AI agent may call. Credentials are never returned. */
+export interface CompanyQuery {
+  uuid: string
+  name: string
+  description: string
+  /** HTTPS, without user, password or fragment. */
+  url: string
+  parameters: CompanyQueryParameter[]
+  authHeaderName?: string | null
+  credentialFromKnowledgeSourceUuid?: string | null
+  timeoutSeconds?: number
+  maxResponseChars?: number
+  isActive: boolean
+  authHeaderConfigured: boolean
+  createdAt?: string | null
+  updatedAt?: string | null
+}
+
+/**
+ * Exactly one credential mode: your own header (`authHeaderName` +
+ * `authHeaderValue`) or a URL knowledge source of the same host.
+ */
+export interface CompanyQueryCreate {
+  name: string
+  description: string
+  url: string
+  parameters?: CompanyQueryParameter[]
+  authHeaderName?: string | null
+  /** Encrypted at rest; never returned. */
+  authHeaderValue?: string
+  credentialFromKnowledgeSourceUuid?: string | null
+  timeoutSeconds?: number
+  maxResponseChars?: number
+  isActive?: boolean
+}
+
+/** Omitted fields, credentials included, keep their value. */
+export type CompanyQueryPatch = Partial<CompanyQueryCreate>
+
+export interface CompanyQueryList {
+  queries: CompanyQuery[]
+}
+
+export interface CompanyQueryResult {
+  query: CompanyQuery
+}
+
+export interface CompanyQueryDeleteResult {
+  deleted: boolean
+  queryUuid: string
+}
+
+export interface CompanyQueryTestResult {
+  queryUuid: string
+  name?: string
+  args?: Record<string, unknown>
+  httpStatus: number | null
+  durationMs: number
+  responseChars: number
+  resultChars?: number
+  errorCode: string | null
+  /** First 1500 characters, or the fixed unavailable message. */
+  text: string
+}
+
+/* ── Knowledge sources ─────────────────────────────────────────────────── */
+
+/** Refresh interval in hours; `null` = manual. */
+export type KnowledgeRefreshInterval = 1 | 6 | 24 | 168 | null
+
+export interface KnowledgeSource {
+  uuid: string
+  kind: string
+  title: string
+  status: 'pending' | 'indexing' | 'ready' | 'failed'
+  authHeaderConfigured: boolean
+  refreshIntervalHours: KnowledgeRefreshInterval
+  errorCode?: string | null
+  url?: string | null
+  indexedAt?: string | null
+  createdAt?: string | null
+  chunkCount?: number
+  bytes?: number
+}
+
+export interface KnowledgeSourceList {
+  sources: KnowledgeSource[]
+  usage?: Record<string, unknown>
+  limits?: Record<string, unknown>
+  embeddingProvider?: string
+  embeddingsConnected?: boolean
+  openaiConnected?: boolean
+}
+
+/** `queued: true` means indexing was queued, not that it finished. */
+export interface KnowledgeSourceResult {
+  source: KnowledgeSource
+  queued?: boolean
+  usedByAgents?: { uuid?: string; name?: string }[]
+  agentsWithExplicitSources?: number
+  warnings?: string[]
+}
+
+export interface KnowledgeUrlCreate {
+  kind: 'url'
+  url: string
+  title?: string
+  /** Omitted on create = daily. */
+  refreshIntervalHours?: KnowledgeRefreshInterval
+  /** A single authentication header. */
+  authHeaderName?: string | null
+  /** Encrypted at rest; never returned. No CR/LF. */
+  authHeaderValue?: string
+}
+
+/** Omitted fields keep their value; `authHeaderName: null` removes the header. */
+export type KnowledgeUrlPatch = Partial<Omit<KnowledgeUrlCreate, 'kind' | 'url'>>

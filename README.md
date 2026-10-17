@@ -358,7 +358,9 @@ const { uuid, secret } = await wazapi.createWebhook({
 
 Each subscribed event requires the token to hold the scope that reads it
 (`message.*` needs `messages:read`, `message.send.failed` needs `messages:write`,
-`crm.opportunity.*` needs `crm:read`, …); a missing one fails with
+`conversation.*` needs `conversations:read` except `conversation.ai_summary`, which
+needs `ai_summaries:read`, `channel.*` needs `channels:read`, `crm.opportunity.*` needs
+`crm:read`, …); a missing one fails with
 `insufficient_scope` and `details.events`. An integration holds up to 5 webhooks.
 
 The SDK ships the payload types; the union is discriminated on `type`, so narrowing
@@ -396,6 +398,23 @@ function handle(event: WazapiWebhookEvent) {
       return retryWithTemplate(event.data.operation_uuid, event.data.error.code)
     case 'order.created':
       return createOrder(event.data)
+    case 'conversation.assigned':
+      // Opt-in (API 1.24): who assigned it, and from/to which group and person
+      return reassign(event.data.conversation.uuid, event.data.assignee?.email ?? null)
+    case 'conversation.status_changed':
+      return setStatus(event.data.conversation.uuid, event.data.status, event.data.actor.type)
+    case 'conversation.fields_changed':
+      // Opt-in (API 1.25): only the changed keys, with `before` and `after`
+      return applyFieldChanges(event.data.conversation.uuid, event.data.changes)
+    case 'conversation.ai_summary':
+      // Opt-in (API 1.29): internal summary, never sent to the customer; dedupe on summary.uuid
+      return event.data.opportunity?.external_id
+        ? addCrmNote(event.data.opportunity.external_id, event.data.summary.text)
+        : undefined
+    case 'channel.status_changed':
+    case 'channel.account_status_changed':
+      // Opt-in (API 1.32): connection, critical health and Meta account rejections
+      return alertOps(event.data.channel_uuid, event.data.status)
     case 'webhook.test':
       return
   }
@@ -436,16 +455,24 @@ new WazapiClient({
 
 ## API surface
 
-- `listChannels()`
+- `listChannels()` (Instagram/Messenger, health and retirement fields since API 1.32), `listChannelEvents(uuid, params?)` (API 1.32), `setChannelRetired(uuid, retired)` (API 1.37)
 - `listContacts(params)` (filters `query`, `email`, `phone`), `getContact(uuid)`, `createContact(input)`, `updateContact(uuid, input)`, `blockContact(uuid)`, `unblockContact(uuid)`, `upsertContactByExternalId(externalId, input)`
 - `listTemplates(params)`, `getTemplate(name)`
-- `listFlows(params)`, `getFlow(uuid)`, `executeFlow(flowUuid, input, idempotencyKey?)`
-- `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`
-- `sendMessage(input, idempotencyKey?)`, `sendText(...)`, `sendTemplate(...)`
+- `listFlows(params)`, `getFlow(uuid, { flow_session_uuid? })`, `executeFlow(flowUuid, input, idempotencyKey?)`
+- `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`, `updateConversationFields(uuid, customFields)` (`conversations:write`, API 1.25), `reactToMessage(conversationUuid, messageUuid, emoji)`
+- `sendMessage(input, idempotencyKey?)` (`type: 'media'` from the file library and `replyToMessageUuid`, API 1.28–1.31), `sendText(...)`, `sendTemplate(...)`
 - `getStore()`, `listStoreProducts(params)`, `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, patch)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(products)`, `listStoreCategories()`
 - `listStoreOrders(params)` (filters `status`, `source`, `payment_method`, `query`, `updated_after`), `getStoreOrder(uuid)`, `updateStoreOrderStatus(uuid, status)`, `createStoreOrder(input, idempotencyKey?)`, `listStoreShippingOptions()` (API 1.19)
 - `listCrmStages(params?)` (filters `group_uuid`, `external_id`), `createCrmStage(input)`, `updateCrmStage(uuid, patch)` (API 1.20), `deleteCrmStage(uuid, replacementStageUuid?)`, `reorderCrmStages(groupUuid, stageUuids)` (API 1.21) — scopes `crm:read` / `crm:write`
 - `listCrmOpportunities(params)` (filters `group_uuid`, `stage_uuid`, `contact_uuid`, `contact_external_id`, `external_id`; sync with `updated_after` + `include_archived`), `getCrmOpportunity(uuid)`, `createCrmOpportunity(input)`, `updateCrmOpportunity(uuid, patch)` (moves with `stage_uuid`/`stage_external_id`), `archiveCrmOpportunity(uuid)` — opportunities with your system's `external_id`, assignee by `assigned_user_external_id` or `assigned_user_email` (API 1.21)
+- `upsertCrmOpportunityByExternalId(externalId, input, idempotencyKey?)`, `upsertCrmOpportunitiesBatch(items, idempotencyKey?)` — by your `external_id`, contact by `contact_phone` too, 24h idempotency (API 1.27)
+- `listGroups(params?)`, `getGroup(uuid)`, `updateGroup(uuid, patch)`, `getGroupDistributionReport(uuid, { day? })` — scopes `groups:read` / `groups:write` (API 1.24)
+- `listCustomFields()`, `createCustomField(input)`, `updateCustomField(uuid, patch)`, `getConversationPanel()`, `updateConversationPanel(patch)` (API 1.24); `getConversationFieldOptions(key)`, `replaceConversationFieldOptions(key, options)` — scopes `fields:read` / `fields:write` (API 1.25)
+- `getEntrySettings()`, `updateEntrySettings(input)`, `getFlowEntries(uuid)`, `updateFlowEntries(uuid, entries)`, `getKeywordEntries(uuid)`, `updateKeywordEntries(uuid, entries)`, `getAiAgentEntries(uuid)`, `updateAiAgentEntries(uuid, entries)` — scopes `entries:read` / `entries:write` (API 1.26)
+- `getInboxResponseSettings()`, `updateInboxResponseSettings(input)`, `recalculateTeamReply({ dryRun })`, `getStaleSessionSettings()`, `updateStaleSessionSettings(patch)` (`settings:read` / `settings:write`), `getOwnerlessFallback()`, `updateOwnerlessFallback(patch)`, `applyOwnerlessFallback({ dryRun? })`
+- `getAiSummarySettings()`, `updateAiSummarySettings(patch)`, `getAiSummaryCosts()` (`ai_summaries:read` / `ai_summaries:write`), `previewAiSummary(input)` (`ai_agents:write`)
+- `getAiAgentUsage(params?)`, `getAiAgent(uuid)`, `updateAiAgentQueryPermissions(uuid, queryUuids)`, `getAiDutySettings()`, `updateAiDutySettings(input)`, `listAiAgentGuardRules(agentUuid)`, `createAiAgentGuardRule(agentUuid, input)`, `updateAiAgentGuardRule(agentUuid, ruleUuid, patch)`, `listAiAgentGuardHits(agentUuid, params?)` — scopes `ai_agents:read` / `ai_agents:write`
+- `listCompanyQueries()`, `createCompanyQuery(input)`, `updateCompanyQuery(uuid, patch)`, `deleteCompanyQuery(uuid)`, `testCompanyQuery(uuid, args?)`; `listKnowledgeSources()`, `createKnowledgeUrlSource(input)`, `updateKnowledgeUrlSource(uuid, patch)`, `reindexKnowledgeUrlSource(uuid)` (`knowledge:read` / `knowledge:write`)
 - `getOperation(uuid)`, `waitForOperation(uuid, options?)`
 - `listWebhooks()`, `createWebhook(input)`, `updateWebhook(uuid, input)`, `deleteWebhook(uuid)`, `rotateWebhookSecret(uuid)`, `testWebhook(uuid)` — the token's own integration (API 1.46)
 - `listStoreProducts(params)` (filter `external_id`, API 1.14; `category_uuid` and `active`, API 1.19), `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, input)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(items)` (matches by `import_handle`, else by `external_id` since API 1.16), `listStoreCategories(params?)`, `createStoreCategory(input)`, `updateStoreCategory(uuid, input)`, `deleteStoreCategory(uuid)` (API 1.15), `listStoreOrders(params)`
