@@ -457,7 +457,7 @@ new WazapiClient({
 
 - `listChannels()` (Instagram/Messenger, health and retirement fields since API 1.32), `listChannelEvents(uuid, params?)` (API 1.32), `setChannelRetired(uuid, retired)` (API 1.37)
 - `listContacts(params)` (filters `query`, `email`, `phone`), `getContact(uuid)`, `createContact(input)`, `updateContact(uuid, input)`, `blockContact(uuid)`, `unblockContact(uuid)`, `upsertContactByExternalId(externalId, input)`
-- `listTemplates(params)`, `getTemplate(name)`
+- `listTemplates(params)`, `getTemplate(name)`, `createTemplate(input)` (authentication / one-time code templates only, `templates:write`, API 1.57)
 - `listFlows(params)`, `getFlow(uuid, { flow_session_uuid? })`, `executeFlow(flowUuid, input, idempotencyKey?)`
 - `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`, `updateConversationFields(uuid, customFields)` (`conversations:write`, API 1.25), `reactToMessage(conversationUuid, messageUuid, emoji)`
 - `sendMessage(input, idempotencyKey?)` (`type: 'media'` from the file library and `replyToMessageUuid`, API 1.28–1.31), `sendText(...)`, `sendTemplate(...)`

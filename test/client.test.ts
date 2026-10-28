@@ -33,6 +33,29 @@ test('lists templates with query params', async () => {
   assert.match(seenUrl, /limit=10/)
 })
 
+test('creates an authentication template (API 1.57)', async () => {
+  let seen: { method?: string; url: string; body: unknown } = { url: '' }
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      seen = { method: init.method, url, body: JSON.parse(String(init.body)) }
+      return json({ data: { name: 'codigo_login', status: 'PENDING', category: 'AUTHENTICATION' } }, { status: 201 })
+    }),
+  })
+  const input = {
+    name: 'codigo_login',
+    language: 'pt_BR',
+    category: 'AUTHENTICATION' as const,
+    code_expiration_minutes: 10,
+  }
+  const template = await client.createTemplate(input)
+  assert.equal(template.status, 'PENDING')
+  assert.equal(seen.method, 'POST')
+  assert.equal(seen.url, 'https://example.test/api/v1/templates')
+  assert.deepEqual(seen.body, input)
+})
+
 test('sends a template and auto-generates an idempotency key', async () => {
   let idem: string | null = null
   let authHeader: string | null = null
