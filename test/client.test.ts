@@ -665,3 +665,69 @@ test('returns unwrapped bodies for company queries and guard rules (API 1.36–1
     'GET /settings/ai-duty',
   ])
 })
+
+test('sends the CRM mirror fields and the select mirror (API 1.53)', async () => {
+  const calls: { url: string; body: any }[] = []
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      calls.push({ url, body: JSON.parse(String(init.body)) })
+      return json({ data: { uuid: 'conv-1', custom_fields: {} } })
+    }),
+  })
+  await client.updateConversationFields('conv-1', { etapa: 'ganho' })
+  assert.deepEqual(calls[0].body, { custom_fields: { etapa: 'ganho' } })
+  await client.updateConversationFields(
+    'conv-1',
+    { etapa: 'ganho' },
+    { before: { etapa: null }, origin: 'crm_mirror', crmTerminal: true, expectedUuidCrm: 'crm-1' }
+  )
+  assert.deepEqual(calls[1].body, {
+    custom_fields: { etapa: 'ganho' },
+    before: { etapa: null },
+    expected_uuid_crm: 'crm-1',
+    origin: 'crm_mirror',
+    crm_terminal: true,
+  })
+  await client.replaceConversationFieldOptions('etapa', [{ value: 'a', label: 'A' }], {
+    idAlias: 'etapa_crm',
+    terminal_values: ['a'],
+  })
+  assert.deepEqual(calls[2].body.mirror, { idAlias: 'etapa_crm', terminal_values: ['a'] })
+})
+
+test('opts in to Marketing Messages and reads the plantao settings (API 1.48/1.49)', async () => {
+  let sent: any
+  const client = new WazapiClient({
+    token: 'waz_api_test',
+    baseUrl: 'https://example.test/api/v1',
+    fetch: stubFetch((url, init) => {
+      if (url.endsWith('/messages')) {
+        sent = JSON.parse(String(init.body))
+        return json({ data: { operation_uuid: 'op-1', status: 'queued' } }, { status: 202 })
+      }
+      return json({
+        data: {
+          mode: 'plantao',
+          agentUuid: 'agent-1',
+          channels: ['whatsapp'],
+          dailyLimit: 60,
+          plantao: { groups: [{ groupUuid: 'g-1' }] },
+          dailyCounters: { day: '2026-10-28', timezone: 'America/Sao_Paulo', porGatilho: {} },
+        },
+      })
+    }),
+  })
+  await client.sendMessage({
+    recipient: { phone: '+5511999998888' },
+    type: 'template',
+    content: { name: 'promo', language: 'pt_BR' },
+    marketingMessages: true,
+  })
+  assert.equal(sent.marketingMessages, true)
+  const duty = await client.getAiDutySettings()
+  assert.equal(duty.mode, 'plantao')
+  assert.equal(duty.plantao.groups[0].groupUuid, 'g-1')
+  assert.equal(duty.dailyCounters.day, '2026-10-28')
+})
