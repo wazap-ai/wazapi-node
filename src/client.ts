@@ -50,6 +50,7 @@ import type {
   AiAgentUsage,
   AiAgentUsageParams,
   AiDutySettings,
+  AiDutySettingsRead,
   AiSummaryCostReport,
   AiSummaryPreview,
   AiSummaryPreviewInput,
@@ -307,15 +308,33 @@ export class WazapiClient {
   /**
    * Sets conversation custom field values; `null` clears one. A select field
    * takes a listed value or its unambiguous label. Requires `conversations:write`. (API 1.25)
+   *
+   * `mirror` is for an integration that mirrors a CRM select: `origin: 'crm_mirror'`
+   * requires `before` (the previous value of each key sent, `null` when absent);
+   * `crmTerminal` locks or releases human edits of the mirrored selects in this call.
    */
   async updateConversationFields(
     uuid: string,
-    customFields: Record<string, unknown>
+    customFields: Record<string, unknown>,
+    mirror?: {
+      before?: Record<string, unknown>
+      expectedUuidCrm?: string
+      origin?: 'crm_mirror'
+      crmTerminal?: boolean
+    }
   ): Promise<{ uuid: string; custom_fields: Record<string, unknown> }> {
     const body = await this.request<Envelope<{ uuid: string; custom_fields: Record<string, unknown> }>>(
       'PATCH',
       `/conversations/${encode(uuid)}/fields`,
-      { body: { custom_fields: customFields } }
+      {
+        body: {
+          custom_fields: customFields,
+          ...(mirror?.before !== undefined ? { before: mirror.before } : {}),
+          ...(mirror?.expectedUuidCrm ? { expected_uuid_crm: mirror.expectedUuidCrm } : {}),
+          ...(mirror?.origin ? { origin: mirror.origin } : {}),
+          ...(mirror?.crmTerminal !== undefined ? { crm_terminal: mirror.crmTerminal } : {}),
+        },
+      }
     )
     return body.data
   }
@@ -643,12 +662,13 @@ export class WazapiClient {
    */
   async replaceConversationFieldOptions(
     key: string,
-    options: FieldOption[]
+    options: FieldOption[],
+    mirror?: { idAlias?: string | null; terminal_values?: string[] }
   ): Promise<ConversationFieldOptions> {
     const body = await this.request<Envelope<ConversationFieldOptions>>(
       'PUT',
       `/conversation-fields/${encode(key)}/options`,
-      { body: { options } }
+      { body: mirror ? { options, mirror } : { options } }
     )
     return body.data
   }
@@ -860,14 +880,14 @@ export class WazapiClient {
   }
 
   /** Requires `ai_agents:read`. (API 1.37) */
-  async getAiDutySettings(): Promise<AiDutySettings> {
-    const body = await this.request<Envelope<AiDutySettings>>('GET', '/settings/ai-duty')
+  async getAiDutySettings(): Promise<AiDutySettingsRead> {
+    const body = await this.request<Envelope<AiDutySettingsRead>>('GET', '/settings/ai-duty')
     return body.data
   }
 
-  /** Replaces all four fields. Requires `ai_agents:write`. */
-  async updateAiDutySettings(input: AiDutySettings): Promise<AiDutySettings> {
-    const body = await this.request<Envelope<AiDutySettings>>('PUT', '/settings/ai-duty', {
+  /** Replaces the four base fields; an omitted `plantao` keeps the saved one. Requires `ai_agents:write`. */
+  async updateAiDutySettings(input: AiDutySettings): Promise<AiDutySettingsRead> {
+    const body = await this.request<Envelope<AiDutySettingsRead>>('PUT', '/settings/ai-duty', {
       body: input,
     })
     return body.data

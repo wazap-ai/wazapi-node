@@ -404,6 +404,7 @@ function handle(event: WazapiWebhookEvent) {
     case 'conversation.status_changed':
       return setStatus(event.data.conversation.uuid, event.data.status, event.data.actor.type)
     case 'conversation.fields_changed':
+    case 'conversation.fields.updated': // API 1.53: field edits with an authenticated author
       // Opt-in (API 1.25): only the changed keys, with `before` and `after`
       return applyFieldChanges(event.data.conversation.uuid, event.data.changes)
     case 'conversation.ai_summary':
@@ -459,7 +460,7 @@ new WazapiClient({
 - `listContacts(params)` (filters `query`, `email`, `phone`), `getContact(uuid)`, `createContact(input)`, `updateContact(uuid, input)`, `blockContact(uuid)`, `unblockContact(uuid)`, `upsertContactByExternalId(externalId, input)`
 - `listTemplates(params)`, `getTemplate(name)`, `createTemplate(input)` (authentication / one-time code templates only, `templates:write`, API 1.57)
 - `listFlows(params)`, `getFlow(uuid, { flow_session_uuid? })`, `executeFlow(flowUuid, input, idempotencyKey?)`
-- `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`, `updateConversationFields(uuid, customFields)` (`conversations:write`, API 1.25), `reactToMessage(conversationUuid, messageUuid, emoji)`
+- `listConversations(params)`, `getConversation(uuid)`, `listMessages(conversationUuid, params)`, `updateConversationFields(uuid, customFields, mirror?)` (`conversations:write`, API 1.25; the optional `mirror` carries `before`, `origin: 'crm_mirror'` and `crmTerminal` for a CRM-mirrored select, API 1.53), `reactToMessage(conversationUuid, messageUuid, emoji)`
 - `sendMessage(input, idempotencyKey?)` (`type: 'media'` from the file library and `replyToMessageUuid`, API 1.28–1.31), `sendText(...)`, `sendTemplate(...)`
 - `getStore()`, `listStoreProducts(params)`, `getStoreProduct(uuid)`, `createStoreProduct(input)`, `updateStoreProduct(uuid, patch)`, `deleteStoreProduct(uuid)`, `batchStoreProducts(products)`, `listStoreCategories()`
 - `listStoreOrders(params)` (filters `status`, `source`, `payment_method`, `query`, `updated_after`), `getStoreOrder(uuid)`, `updateStoreOrderStatus(uuid, status)`, `createStoreOrder(input, idempotencyKey?)`, `listStoreShippingOptions()` (API 1.19)
@@ -500,3 +501,9 @@ version when updating a coupon or policy (version 0 creates a policy). Archive c
 than deleting them. Orders expose immutable `discount_cents` and `discount`; item `net_cents`
 is the amount after its allocated discount. A reserved use counts toward coupon limits;
 confirmed payment consumes it. Refunds do not automatically restore a use.
+
+## Since API 1.47
+
+- **Marketing Messages (1.48):** `sendMessage({ type: 'template', marketingMessages: true, ... })` routes a MARKETING template through MM Lite when the channel is onboarded; the route taken is `result.send_route` of the operation and `send_route` of the `Message`.
+- **Plantão (1.49–1.56):** `AiDutySettings.mode` accepts `'plantao'` with a `plantao` block (`groups`, triggers A/B/C, `regras.r1..r5`); `getAiDutySettings()` also returns `dailyCounters` per trigger.
+- **Fields (1.53):** `datetime` custom fields, `mirror` on definitions and select options, the `conversation.fields.updated` webhook and the `integration` actor.

@@ -467,6 +467,8 @@ export interface Message {
   /** When the text or caption was last edited; `content` holds the current value (API 1.5). */
   edited_at: string | null
   provider_message_id: string | null
+  /** Confirmed route of a template message; absent on older messages (API 1.48). */
+  send_route?: SendRoute
   created_at: string | null
   updated_at: string | null
   entry_kind?: EntryKind
@@ -526,11 +528,14 @@ export interface MessageSendResult {
   text: string | null
 }
 
+export type SendRoute = 'messages' | 'marketing_messages'
+
 export interface Operation {
   uuid: string
   type: 'message.send' | 'flow.execute'
   status: OperationStatus
-  result: Record<string, unknown> | null
+  /** For `message.send`, `send_route` is the route Meta actually took (API 1.48). */
+  result: (Record<string, unknown> & { send_route?: SendRoute }) | null
   /** `message` is always English since API 1.7; branch on `code`. */
   error: { code: string; message: string | null } | null
   created_at: string | null
@@ -566,6 +571,13 @@ export type SendMessageInput =
       recipient: Recipient
       type: 'template'
       content: TemplateSendContent
+      /**
+       * Opt in to the Marketing Messages API ("MM Lite") for a MARKETING
+       * template. Any case that cannot use it (other category, channel not
+       * onboarded, 24 h hold after a Meta refusal) sends through the regular
+       * route without an error; read the route taken from `result.send_route`. (API 1.48)
+       */
+      marketingMessages?: boolean
     }
   | {
       channel_uuid?: string
@@ -1081,6 +1093,7 @@ export type WebhookEventType =
   | 'conversation.assigned'
   | 'conversation.status_changed'
   | 'conversation.fields_changed'
+  | 'conversation.fields.updated'
   | 'conversation.ai_summary'
   | 'channel.status_changed'
   | 'channel.account_status_changed'
@@ -1338,11 +1351,17 @@ export type CrmOpportunityArchivedEvent = WebhookEnvelope<
   CrmOpportunityEventData
 >
 
-/** Who made a conversation change; `integration_uuid` is set for `api` writes. */
+/**
+ * Who made a conversation change; `integration_uuid` is set for `api` writes.
+ * `integration` actors carry the integration `name`; `email` is set only for `user`.
+ */
 export interface ConversationWebhookActor {
-  type: 'user' | 'flow' | 'ai_agent' | 'api' | 'mcp' | 'system'
+  type: 'user' | 'flow' | 'ai_agent' | 'api' | 'mcp' | 'system' | 'integration'
   user: { uuid: string; name: string | null } | null
   integration_uuid: string | null
+  email?: string
+  name?: string
+  origin?: 'crm_mirror'
 }
 
 export type ConversationStatus = 'open' | 'pending' | 'resolved'
@@ -1416,6 +1435,27 @@ export interface ConversationFieldsChangedData {
   contact: ConversationWebhookContact
   changes: ConversationFieldChange[]
   actor: ConversationWebhookActor
+  origin?: 'crm_mirror'
+  origin_integration_uuid?: string
+}
+
+/**
+ * Transactional field change with an authenticated author (API 1.53). Select
+ * values are `String(id)`; a cleared field is `null`. `contact.external_id` is
+ * always `null` here so retries keep the same body hash.
+ */
+export interface ConversationFieldsUpdatedData {
+  conversation: {
+    uuid: string
+    status: string
+    channel: { uuid: string; provider: string }
+    fields_snapshot?: { uuid_crm: unknown }
+  }
+  contact: { uuid: string; external_id: null }
+  changes: ConversationFieldChange[]
+  actor: ConversationWebhookActor
+  origin?: 'crm_mirror'
+  origin_integration_uuid?: string
 }
 
 export interface AiSummaryUsage {
@@ -1485,6 +1525,10 @@ export type ConversationFieldsChangedEvent = WebhookEnvelope<
   'conversation.fields_changed',
   ConversationFieldsChangedData
 >
+export type ConversationFieldsUpdatedEvent = WebhookEnvelope<
+  'conversation.fields.updated',
+  ConversationFieldsUpdatedData
+>
 export type ConversationAiSummaryEvent = WebhookEnvelope<
   'conversation.ai_summary',
   ConversationAiSummaryData
@@ -1518,6 +1562,7 @@ export type WazapiWebhookEvent =
   | ConversationAssignedEvent
   | ConversationStatusChangedEvent
   | ConversationFieldsChangedEvent
+  | ConversationFieldsUpdatedEvent
   | ConversationAiSummaryEvent
   | ChannelStatusChangedEvent
   | ChannelAccountStatusChangedEvent
@@ -1724,7 +1769,21 @@ export interface FieldOption {
   label: string
 }
 
-export type CustomFieldType = 'text' | 'number' | 'date' | 'select'
+/** `date` is YYYY-MM-DD; `datetime` is ISO 8601 with an explicit offset or `Z`. */
+export type CustomFieldType = 'text' | 'number' | 'date' | 'datetime' | 'select'
+
+/** Select mirrored from an integration's CRM: `terminalValues` lock human edits. */
+export interface FieldMirror {
+  /** Optional read alias of a select, unique per company. */
+  idAlias?: string | null
+  integrationUuid?: string
+  terminalValues: string[]
+}
+
+export interface FieldMirrorInput {
+  /** `null` removes the alias. 1–30 chars of `a-z0-9_`. */
+  idAlias?: string | null
+}
 
 /** Attribute names are camelCase. */
 export interface CustomFieldDefinition {
@@ -1742,8 +1801,9 @@ export interface CustomFieldDefinition {
   position: number | null
   multiline: boolean
   hideWhenEmpty: boolean
-  /** Blocks edits in the panel only; flow, AI, API and MCP writes still work. */
+  /** Blocks the `user` and `mcp` actors, owners included; flows, AI agents, summaries, system and the API integration still write. */
   readOnly?: boolean
+  mirror?: FieldMirror | null
   /** Unique values; a repeated label cannot be used to write a value. */
   options: FieldOption[]
   /** HTTPS URL with `{value}` outside its host. */
@@ -1758,6 +1818,7 @@ type CustomFieldWritable = Partial<
 > & {
   /** Adds or updates options by value and removes the listed values. */
   optionsPatch?: { upsert?: FieldOption[]; remove?: string[] }
+  mirror?: FieldMirrorInput | null
 }
 
 export interface CustomFieldCreate extends CustomFieldWritable {
@@ -1776,6 +1837,7 @@ export interface ConversationFieldOptions {
   key: string
   type: 'select'
   options: FieldOption[]
+  mirror?: FieldMirror
 }
 
 type PanelVisibility = 'show' | 'hide'
@@ -2125,15 +2187,95 @@ export interface AiAgentQueryResult {
   agent: { uuid: string; allowedCompanyQueryUuids: string[] }
 }
 
-/** Plantão da IA: `sombra` keeps a private record, `nota` an internal note; it never sends. (API 1.37) */
+/** `HH:MM` in the company timezone. */
+export interface AiDutyWindow {
+  inicio: string
+  fim: string
+}
+
+export interface AiDutyGroup {
+  groupUuid: string
+  /** B: `nota` rehearses in an internal note (default); `enviar` sends the follow-up. */
+  retomadaModo?: 'nota' | 'enviar'
+  /** Trigger A on the next sweep after absence, without the group delay. */
+  ausenteImediato?: boolean
+  /** Trigger C: minutes waiting on the present seller; `0`/`null` disables, otherwise 5–180. */
+  presenteSemRespostaMinutos?: number | null
+  /** Active company members mentioned when the lead wants to close or asks for a discount (up to 20). */
+  supervisorUuids?: string[]
+}
+
+/** Guard rules checked before sending, all on by default; `false` lets that case through. */
+export interface AiDutyRules {
+  r1?: boolean
+  r2?: boolean
+  r3?: boolean
+  r4?: boolean
+  r5?: boolean
+}
+
+/** Plantão configuration (mode `plantao`). On a PUT an omitted key keeps the saved value. */
+export interface AiDutyPlantao {
+  /** Shared A/C/B contact window; start inclusive, end exclusive. */
+  janelaContato?: AiDutyWindow
+  /** A may reply outside the window when the lead wrote at most this many minutes ago (1–120). */
+  respostaRapidaMinutos?: number
+  /** A/C cap per company-local day (1–1000); only confirmed sends count. */
+  limiteDiario?: number
+  /** Up to 50 groups; at least one is required in `plantao` mode. */
+  groups: AiDutyGroup[]
+  /** @deprecated Use `retomadaCadenciaMinutos`. */
+  retomadaMinutos?: number
+  /** Up to three delays (15–1380 min); the first counts from the last team message. */
+  retomadaCadenciaMinutos?: number[]
+  /** @deprecated Alias of `janelaContato`; sending both requires equal values. */
+  retomadaJanela?: AiDutyWindow
+  /** B cap per company-local day (1–1000). */
+  retomadaLimiteDiario?: number
+  /** Use internal notes for conversations ineligible for a plantão reply. */
+  notaForaDoPlantao?: boolean
+  /** Trigger A: reply when the assigned seller is absent. */
+  gatilhoAusente?: boolean
+  carenciaDonoAtivo?: { janelaMinutos?: number; esperaMinutos?: number }
+  /** Trigger B: up to three contextual follow-ups per cycle. */
+  gatilhoRetomada?: boolean
+  regras?: AiDutyRules
+}
+
+/**
+ * Plantão da IA: `sombra` keeps a private record, `nota` an internal note;
+ * `plantao` (seller assistant for absence, a present seller who has not
+ * replied, and follow-ups) can send. (API 1.37; `plantao` since 1.49)
+ */
 export interface AiDutySettings {
-  mode: 'desligado' | 'sombra' | 'nota'
+  mode: 'desligado' | 'sombra' | 'nota' | 'plantao'
   /** An active agent of the company, required when enabled. */
   agentUuid: string | null
   /** WhatsApp only; an empty list excludes every conversation. */
   channels: 'whatsapp'[]
-  /** Company-local daily cap of attempts. */
+  /** Company-local daily cap of shadow and note attempts. */
   dailyLimit: number
+  /** Omitted on a PUT keeps the saved configuration. */
+  plantao?: AiDutyPlantao
+}
+
+export interface AiDutyTriggerCounters {
+  decisoes: number
+  enviadas: number
+  suprimidasPorRegra: number
+  suprimidasPorCota: number
+  invalidas: number
+  invalidasPorMotivo: { json: number; schema: number; finish_reason: number; unavailable: number }
+}
+
+/** What `getAiDutySettings` returns: the settings plus today's counters per trigger. */
+export interface AiDutySettingsRead extends AiDutySettings {
+  plantao: AiDutyPlantao
+  dailyCounters: {
+    day: string
+    timezone: string
+    porGatilho: { A: AiDutyTriggerCounters; B: AiDutyTriggerCounters; C: AiDutyTriggerCounters }
+  }
 }
 
 export interface ReplyGuardCondition {
