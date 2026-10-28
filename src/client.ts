@@ -30,6 +30,7 @@ import type {
   StoreProductWrite,
   StoreSummary,
   Template,
+  TemplateCreateInput,
   TemplateSendContent,
   StoreProductListParams,
   StoreCategoryWrite,
@@ -237,6 +238,16 @@ export class WazapiClient {
 
   async getTemplate(name: string): Promise<Template> {
     const body = await this.request<Envelope<Template>>('GET', `/templates/${encode(name)}`)
+    return body.data
+  }
+
+  /**
+   * Submits an authentication (one-time code) template to Meta; it comes back `PENDING`.
+   * Send it with `sendTemplate` once `APPROVED`, passing the code as the only parameter.
+   * Requires `templates:write`. (API 1.57)
+   */
+  async createTemplate(input: TemplateCreateInput): Promise<Template> {
+    const body = await this.request<Envelope<Template>>('POST', '/templates', { body: input })
     return body.data
   }
 

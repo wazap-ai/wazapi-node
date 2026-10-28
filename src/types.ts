@@ -40,6 +40,8 @@ export type PublicApiScope =
   | 'messages:read'
   | 'messages:write'
   | 'templates:read'
+  /** Create authentication (one-time code) templates. */
+  | 'templates:write'
   | 'flows:read'
   | 'flows:execute'
   | 'operations:read'
@@ -368,6 +370,23 @@ export interface Template {
   variables: TemplateVariables
   created_at: string | null
   updated_at: string | null
+}
+
+/** Body of `createTemplate`. Only `AUTHENTICATION` templates can be created through the API. (API 1.57) */
+export interface TemplateCreateInput {
+  /** Lowercase letters, digits and underscores. */
+  name: string
+  /** e.g. `pt_BR`. */
+  language: string
+  category: 'AUTHENTICATION'
+  /** Adds Meta's "do not share this code" notice. Defaults to `true`. */
+  add_security_recommendation?: boolean
+  /** 1 to 90. Omit for no expiration notice. */
+  code_expiration_minutes?: number
+  /** Label of the copy-code button (up to 25 characters). */
+  button_text?: string
+  /** Required only when the company has more than one WhatsApp channel. */
+  channel_uuid?: string
 }
 
 export interface Conversation {
