@@ -51,6 +51,8 @@ import type {
   AiAgentUsageParams,
   AiDutySettings,
   AiDutySettingsRead,
+  DismissAiSuggestionsInput,
+  DismissAiSuggestionsResult,
   AiSummaryCostReport,
   AiSummaryPreview,
   AiSummaryPreviewInput,
@@ -64,8 +66,12 @@ import type {
   CompanyQueryList,
   CompanyQueryPatch,
   CompanyQueryResult,
+  CompanyQueryTestOptions,
   CompanyQueryTestResult,
   ConversationFieldOptions,
+  ConversationFieldOptionsResult,
+  FieldOptionDiff,
+  KeywordEntryTargets,
   ConversationPanel,
   ConversationPanelPatch,
   CrmOpportunityUpsert,
@@ -664,13 +670,13 @@ export class WazapiClient {
     key: string,
     options: FieldOption[],
     mirror?: { idAlias?: string | null; terminal_values?: string[] }
-  ): Promise<ConversationFieldOptions> {
-    const body = await this.request<Envelope<ConversationFieldOptions>>(
+  ): Promise<ConversationFieldOptionsResult> {
+    const body = await this.request<Envelope<ConversationFieldOptions> & { diff?: FieldOptionDiff }>(
       'PUT',
       `/conversation-fields/${encode(key)}/options`,
       { body: mirror ? { options, mirror } : { options } }
     )
-    return body.data
+    return body.diff === undefined ? body.data : { ...body.data, diff: body.diff }
   }
 
   /** Layout of the conversation context panel. (API 1.24) */
@@ -716,17 +722,21 @@ export class WazapiClient {
     return body.data
   }
 
-  async getKeywordEntries(uuid: string): Promise<EntryTargets> {
-    const body = await this.request<Envelope<EntryTargets>>('GET', `/keywords/${encode(uuid)}/entries`)
+  async getKeywordEntries(uuid: string): Promise<KeywordEntryTargets> {
+    const body = await this.request<Envelope<KeywordEntryTargets>>('GET', `/keywords/${encode(uuid)}/entries`)
     return body.data
   }
 
-  /** An empty list means every entry. */
-  async updateKeywordEntries(uuid: string, supportedEntries: EntryKind[]): Promise<EntryTargets> {
-    const body = await this.request<Envelope<EntryTargets>>(
+  /** An empty list means every entry. `run_when_assigned` is sent only when given. (API 1.63) */
+  async updateKeywordEntries(
+    uuid: string,
+    supportedEntries: EntryKind[],
+    options: { run_when_assigned?: boolean } = {}
+  ): Promise<KeywordEntryTargets> {
+    const body = await this.request<Envelope<KeywordEntryTargets>>(
       'PATCH',
       `/keywords/${encode(uuid)}/entries`,
-      { body: { supported_entries: supportedEntries } }
+      { body: { supported_entries: supportedEntries, ...options } }
     )
     return body.data
   }
@@ -886,11 +896,19 @@ export class WazapiClient {
   }
 
   /** Replaces the four base fields; an omitted `plantao` keeps the saved one. Requires `ai_agents:write`. */
-  async updateAiDutySettings(input: AiDutySettings): Promise<AiDutySettingsRead> {
-    const body = await this.request<Envelope<AiDutySettingsRead>>('PUT', '/settings/ai-duty', {
+  async updateAiDutySettings(input: AiDutySettings): Promise<AiDutySettings> {
+    const body = await this.request<Envelope<AiDutySettings>>('PUT', '/settings/ai-duty', {
       body: input,
     })
     return body.data
+  }
+
+  /**
+   * Previews or dismisses open AI seller tasks in bulk: it only writes with
+   * `dryRun: false`. Requires `conversations:write`. (API 1.61)
+   */
+  dismissAiSuggestions(input: DismissAiSuggestionsInput = {}): Promise<DismissAiSuggestionsResult> {
+    return this.request('POST', '/ai-suggestions/dismiss', { body: input })
   }
 
   /** Reply guard rules of an agent. Requires `ai_agents:read`. (API 1.36) */
@@ -940,8 +958,12 @@ export class WazapiClient {
   }
 
   /** Runs the GET without AI, inactive queries included. */
-  testCompanyQuery(uuid: string, args: Record<string, string> = {}): Promise<CompanyQueryTestResult> {
-    return this.request('POST', `/company-queries/${encode(uuid)}/test`, { body: { args } })
+  testCompanyQuery(
+    uuid: string,
+    args: Record<string, string> = {},
+    options: CompanyQueryTestOptions = {}
+  ): Promise<CompanyQueryTestResult> {
+    return this.request('POST', `/company-queries/${encode(uuid)}/test`, { body: { args, ...options } })
   }
 
   /** URL knowledge sources, without secrets. Requires `knowledge:read`. */

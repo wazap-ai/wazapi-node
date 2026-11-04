@@ -618,6 +618,8 @@ export interface StoreProductListParams extends ListParams {
   category_uuid?: string
   /** Only active or inactive products. (API 1.19) */
   active?: boolean
+  /** Only listed or unlisted products; omit for both. Authenticated API only. (API 1.59) */
+  listed?: boolean
 }
 
 /** `GET /store/orders` filters (API 1.19). An unknown `status` is ignored. */
@@ -692,6 +694,22 @@ export interface StoreProduct {
    * link. Unique per store when set. (API 1.14)
    */
   external_id: string | null
+  /**
+   * Interest-free installment maximum (1–12); `null` inherits the store default.
+   * (API 1.58)
+   */
+  installments_max: number | null
+  /**
+   * Minimum installment in cents, on the net line total without shipping.
+   * `null` inherits R$ 5 (500 cents); `0` disables it. (API 1.58)
+   */
+  min_installment_cents: number | null
+  /**
+   * `false` keeps an active product out of the public storefront, search and
+   * Meta catalog, but available to authenticated orders, flows, AI and private
+   * checkout. (API 1.59)
+   */
+  listed: boolean
   variants: StoreProductVariant[]
   created_at: string | null
   updated_at: string | null
@@ -720,6 +738,15 @@ export interface StoreProductWrite {
    * in the store, otherwise `422 external_id_taken`; `null` clears it. (API 1.14)
    */
   external_id?: string | null
+  /** Interest-free maximum (1–12); `null` inherits the store default. (API 1.58) */
+  installments_max?: number | null
+  /** Minimum installment in cents; `null` inherits 500, `0` disables. (API 1.58) */
+  min_installment_cents?: number | null
+  /**
+   * Defaults to `true` on create; omission preserves it on PATCH and on an
+   * existing batch upsert. (API 1.59)
+   */
+  listed?: boolean
   /**
    * Up to 4 public http(s) URLs of JPEG, PNG or WebP images (5 MB each). Wazapi
    * downloads and re-hosts them; the first one is the cover. Omit to keep the
@@ -1703,22 +1730,49 @@ export interface SupportGroup {
   wait_alert_minutes: number | null
   /** `null` keeps the legacy distribution. (API 1.27) */
   distribution_strategy: GroupDistributionStrategy | null
-  /** FIFO queue for assignments that end without a person. (API 1.27) */
+  /**
+   * Queue assignments that end without a person: stock reserved per member,
+   * doses to online members, urgent Meta windows first. (API 1.27; sales queue
+   * since 1.60)
+   */
   queue_when_unavailable: boolean
   /** With the queue on, distribution waits for this schedule; `null` = any time. */
   distribution_schedule_uuid: string | null
-  /** Queue deliveries per person per minute; `null` removes the limit. */
+  /** @deprecated Kept for compatibility: doses come from `queue_policy`. */
   queue_batch_per_agent: number | null
   /** Minutes the queue waits after each schedule opening; 0 disables. (API 1.39) */
   queue_opening_delay_minutes: number
-  /** Active queue conversations per person; `null` removes the ceiling. (API 1.39) */
+  /** @deprecated Kept for compatibility: the sales queue has no per-person ceiling. */
   queue_max_per_agent: number | null
-  /** Serve conversations inside the 24h window first; false keeps FIFO. (API 1.41) */
+  /** @deprecated Kept for compatibility: the sales queue sets its own priority. */
   queue_open_window_first: boolean
+  /** Sales queue policy of this group. (API 1.60) */
+  queue_policy: QueuePolicy
 }
 
+/** Per-group sales queue policy; defaults are in the API contract. (API 1.60) */
+export interface QueuePolicy {
+  rosterDays: number
+  historyDays: number
+  deadlinePercentile: number
+  deadlineGraceMinutes: number
+  /** Offline reservation limit after the opening, in minutes; 0 disables it. */
+  reservationMaxMinutesAfterOpening: number
+  minimumHistory: number
+  doseSize: number
+  doseIntervalMinutes: number
+  urgentWindowMinutes: number
+  /** Ignore presence measurements before this date; `null` uses all of them. */
+  historyStartDate: string | null
+}
+
+/** Omitted keys keep their value. (API 1.60) */
+export type QueuePolicyPatch = Partial<QueuePolicy>
+
 /** Partial update: an omitted field keeps its value, `null` clears a nullable one. */
-export type SupportGroupPatch = Partial<Omit<SupportGroup, 'uuid' | 'name'>>
+export type SupportGroupPatch = Partial<Omit<SupportGroup, 'uuid' | 'name' | 'queue_policy'>> & {
+  queue_policy?: QueuePolicyPatch
+}
 
 export interface GroupDistributionReport {
   group_uuid: string
@@ -1814,7 +1868,7 @@ export interface CustomFieldDefinition {
 }
 
 type CustomFieldWritable = Partial<
-  Omit<CustomFieldDefinition, 'uuid' | 'key' | 'label' | 'type'>
+  Omit<CustomFieldDefinition, 'uuid' | 'key' | 'label' | 'type' | 'mirror'>
 > & {
   /** Adds or updates options by value and removes the listed values. */
   optionsPatch?: { upsert?: FieldOption[]; remove?: string[] }
@@ -1833,11 +1887,21 @@ export interface CustomFieldPatch extends CustomFieldWritable {
   type?: CustomFieldType
 }
 
+/** Options changed by `replaceConversationFieldOptions`. */
+export interface FieldOptionDiff {
+  added: FieldOption[]
+  removed: FieldOption[]
+  renamed: FieldOption[]
+}
+
+/** The saved options plus the envelope's `diff`, when the API sends it. */
+export type ConversationFieldOptionsResult = ConversationFieldOptions & { diff?: FieldOptionDiff }
+
 export interface ConversationFieldOptions {
   key: string
   type: 'select'
   options: FieldOption[]
-  mirror?: FieldMirror
+  mirror?: FieldMirror | null
 }
 
 type PanelVisibility = 'show' | 'hide'
@@ -1896,6 +1960,12 @@ export interface EntrySettings {
 export interface EntryTargets {
   uuid: string
   supported_entries: EntryKind[]
+}
+
+/** A keyword's entries and whether a real button click may run it on an assigned conversation. */
+export interface KeywordEntryTargets extends EntryTargets {
+  /** Default `false`. Typed text never authorizes this run, and the assignee stays. (API 1.63) */
+  run_when_assigned: boolean
 }
 
 export interface FlowEntryTargets {
@@ -2216,7 +2286,18 @@ export interface AiDutyRules {
 
 /** Plantão configuration (mode `plantao`). On a PUT an omitted key keeps the saved value. */
 export interface AiDutyPlantao {
-  /** Shared A/C/B contact window; start inclusive, end exclusive. */
+  /**
+   * B counts from the last human or lead message, sends at most twice and follows
+   * the group business schedule. `false` restores the legacy cadence. (API 1.60)
+   */
+  retomadaContextual?: boolean
+  /** Read and validate one cached context before A/B/C. (API 1.60) */
+  leituraContexto?: boolean
+  /** Catalog chat model for that reading, independent from the writing agent. (API 1.60) */
+  leituraModelo?: string
+  /** Absence status, same-day owner grace and a suggestion when confirmation is missing. (API 1.60) */
+  umaVozPorConversa?: boolean
+  /** A/C contact window; start inclusive, end exclusive. Contextual B follows the business schedule. */
   janelaContato?: AiDutyWindow
   /** A may reply outside the window when the lead wrote at most this many minutes ago (1–120). */
   respostaRapidaMinutos?: number
@@ -2226,9 +2307,9 @@ export interface AiDutyPlantao {
   groups: AiDutyGroup[]
   /** @deprecated Use `retomadaCadenciaMinutos`. */
   retomadaMinutos?: number
-  /** Up to three delays (15–1380 min); the first counts from the last team message. */
+  /** Delays (15–1380 min): the first from the last human or lead message, then from the last attempt. */
   retomadaCadenciaMinutos?: number[]
-  /** @deprecated Alias of `janelaContato`; sending both requires equal values. */
+  /** @deprecated Legacy clock of B, used only when `retomadaContextual` is `false`. */
   retomadaJanela?: AiDutyWindow
   /** B cap per company-local day (1–1000). */
   retomadaLimiteDiario?: number
@@ -2237,7 +2318,7 @@ export interface AiDutyPlantao {
   /** Trigger A: reply when the assigned seller is absent. */
   gatilhoAusente?: boolean
   carenciaDonoAtivo?: { janelaMinutos?: number; esperaMinutos?: number }
-  /** Trigger B: up to three contextual follow-ups per cycle. */
+  /** Trigger B: at most two sends per human or lead cycle in contextual mode. */
   gatilhoRetomada?: boolean
   regras?: AiDutyRules
 }
@@ -2257,6 +2338,34 @@ export interface AiDutySettings {
   dailyLimit: number
   /** Omitted on a PUT keeps the saved configuration. */
   plantao?: AiDutyPlantao
+  /** Replace the previous AI summary note when creating a new one. Omit to keep. (API 1.60) */
+  summaryNotesEnabled?: boolean
+  /** Create seller tasks with the personal reminders. Omit to keep. (API 1.60) */
+  suggestionsEnabled?: boolean
+}
+
+/** `details` of a `429 rate_limit_exceeded`, read from `WazapiError.details`. */
+export interface RateLimitDetails {
+  budget: 'read' | 'write'
+  limit: number
+  remaining: number
+  reset_seconds: number
+}
+
+/** `POST /ai-suggestions/dismiss`. Without `dryRun: false` it only previews. (API 1.61) */
+export interface DismissAiSuggestionsInput {
+  /** Default `true`: preview only, with no reminder, note or audit write. */
+  dryRun?: boolean
+  /** Only this seller of the active company. */
+  sellerUuid?: string
+  /** Exclusive creation cutoff, with timezone. */
+  createdBefore?: string
+}
+
+export interface DismissAiSuggestionsResult {
+  /** Completed reminders, or eligible ones when `dryRun` is `true`. */
+  dismissed: number
+  bySeller: { sellerUuid: string; name: string; count: number }[]
 }
 
 export interface AiDutyTriggerCounters {
@@ -2381,15 +2490,24 @@ export interface CompanyQueryParameter {
   required: boolean
   enum?: string[]
   maxLength?: number
+  /**
+   * Omitted or `argument`: collected by the model. The others are filled by the
+   * server for the current contact and cannot appear in `args`. (API 1.59)
+   */
+  source?: 'argument' | 'contact_uuid' | 'last_paid_store_order_uuid'
 }
 
-/** A fixed HTTPS GET an AI agent may call. Credentials are never returned. */
+export type CompanyQueryMethod = 'GET' | 'POST'
+
+/** A fixed HTTPS GET or POST an AI agent may call. Credentials are never returned. */
 export interface CompanyQuery {
   uuid: string
   name: string
   description: string
   /** HTTPS, without user, password or fragment. */
   url: string
+  /** POST sends a flat JSON body and may have external side effects. (API 1.59) */
+  method: CompanyQueryMethod
   parameters: CompanyQueryParameter[]
   authHeaderName?: string | null
   credentialFromKnowledgeSourceUuid?: string | null
@@ -2409,6 +2527,8 @@ export interface CompanyQueryCreate {
   name: string
   description: string
   url: string
+  /** Default `GET`. POST refuses redirects and is blocked in preview, duty and inactivity turns. (API 1.59) */
+  method?: CompanyQueryMethod
   parameters?: CompanyQueryParameter[]
   authHeaderName?: string | null
   /** Encrypted at rest; never returned. */
@@ -2433,6 +2553,11 @@ export interface CompanyQueryResult {
 export interface CompanyQueryDeleteResult {
   deleted: boolean
   queryUuid: string
+}
+
+export interface CompanyQueryTestOptions {
+  /** Test contact of the same company, required for server-filled parameters. (API 1.59) */
+  contactUuid?: string
 }
 
 export interface CompanyQueryTestResult {
