@@ -1,0 +1,3677 @@
+{
+  "sourceSha": "f98d5b65f7bd23cf4ff1ec8e3308cfff76c77593",
+  "version": "1.63.0",
+  "baselineSha": "e4f783b86977bc7612dccd6ec0635797ce3b1091",
+  "baselineVersion": "1.46.0",
+  "sourceSha256": "ed8773c49f8ae80d4212dc1693b4ae6cfb579ef453fa31890c7b2daa782cb48f",
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/knowledge/sources",
+      "operationId": "listKnowledgeSources"
+    },
+    {
+      "method": "POST",
+      "path": "/knowledge/sources",
+      "operationId": "createKnowledgeUrlSource"
+    },
+    {
+      "method": "PATCH",
+      "path": "/knowledge/sources/{uuid}",
+      "operationId": "updateKnowledgeUrlSource"
+    },
+    {
+      "method": "POST",
+      "path": "/knowledge/sources/{uuid}/reindex",
+      "operationId": "reindexKnowledgeUrlSource"
+    },
+    {
+      "method": "GET",
+      "path": "/channels",
+      "operationId": "listChannels"
+    },
+    {
+      "method": "GET",
+      "path": "/contacts",
+      "operationId": "listContacts"
+    },
+    {
+      "method": "POST",
+      "path": "/contacts",
+      "operationId": "createContact"
+    },
+    {
+      "method": "GET",
+      "path": "/contacts/{contact_uuid}",
+      "operationId": "getContact"
+    },
+    {
+      "method": "PATCH",
+      "path": "/contacts/{contact_uuid}",
+      "operationId": "updateContact"
+    },
+    {
+      "method": "POST",
+      "path": "/contacts/{contact_uuid}/block",
+      "operationId": "blockContact"
+    },
+    {
+      "method": "DELETE",
+      "path": "/contacts/{contact_uuid}/block",
+      "operationId": "unblockContact"
+    },
+    {
+      "method": "PUT",
+      "path": "/contacts/external/{external_id}",
+      "operationId": "upsertExternalContact"
+    },
+    {
+      "method": "GET",
+      "path": "/flows",
+      "operationId": "listFlows"
+    },
+    {
+      "method": "GET",
+      "path": "/flows/{flow_uuid}",
+      "operationId": "getFlow"
+    },
+    {
+      "method": "POST",
+      "path": "/flows/{flow_uuid}/executions",
+      "operationId": "executeFlow"
+    },
+    {
+      "method": "GET",
+      "path": "/templates",
+      "operationId": "listTemplates"
+    },
+    {
+      "method": "POST",
+      "path": "/templates",
+      "operationId": "createTemplate"
+    },
+    {
+      "method": "GET",
+      "path": "/templates/{name}",
+      "operationId": "getTemplate"
+    },
+    {
+      "method": "POST",
+      "path": "/messages",
+      "operationId": "sendMessage"
+    },
+    {
+      "method": "GET",
+      "path": "/operations/{operation_uuid}",
+      "operationId": "getOperation"
+    },
+    {
+      "method": "GET",
+      "path": "/conversations",
+      "operationId": "listConversations"
+    },
+    {
+      "method": "GET",
+      "path": "/conversations/{conversation_uuid}",
+      "operationId": "getConversation"
+    },
+    {
+      "method": "GET",
+      "path": "/conversations/{conversation_uuid}/messages",
+      "operationId": "listConversationMessages"
+    },
+    {
+      "method": "GET",
+      "path": "/store",
+      "operationId": "getStore"
+    },
+    {
+      "method": "GET",
+      "path": "/store/products",
+      "operationId": "listStoreProducts"
+    },
+    {
+      "method": "POST",
+      "path": "/store/products",
+      "operationId": "createStoreProduct"
+    },
+    {
+      "method": "POST",
+      "path": "/store/products/batch",
+      "operationId": "batchStoreProducts"
+    },
+    {
+      "method": "GET",
+      "path": "/store/products/{product_uuid}",
+      "operationId": "getStoreProduct"
+    },
+    {
+      "method": "PATCH",
+      "path": "/store/products/{product_uuid}",
+      "operationId": "updateStoreProduct"
+    },
+    {
+      "method": "DELETE",
+      "path": "/store/products/{product_uuid}",
+      "operationId": "deleteStoreProduct"
+    },
+    {
+      "method": "GET",
+      "path": "/store/categories",
+      "operationId": "listStoreCategories"
+    },
+    {
+      "method": "POST",
+      "path": "/store/categories",
+      "operationId": "createStoreCategory"
+    },
+    {
+      "method": "PATCH",
+      "path": "/store/categories/{category_uuid}",
+      "operationId": "updateStoreCategory"
+    },
+    {
+      "method": "DELETE",
+      "path": "/store/categories/{category_uuid}",
+      "operationId": "deleteStoreCategory"
+    },
+    {
+      "method": "GET",
+      "path": "/store/orders",
+      "operationId": "listStoreOrders"
+    },
+    {
+      "method": "POST",
+      "path": "/store/orders",
+      "operationId": "createStoreOrder"
+    },
+    {
+      "method": "GET",
+      "path": "/store/orders/{order_uuid}",
+      "operationId": "getStoreOrder"
+    },
+    {
+      "method": "POST",
+      "path": "/store/orders/{order_uuid}/status",
+      "operationId": "updateStoreOrderStatus"
+    },
+    {
+      "method": "GET",
+      "path": "/store/coupons",
+      "operationId": "listStoreCoupons"
+    },
+    {
+      "method": "POST",
+      "path": "/store/coupons",
+      "operationId": "saveStoreCoupon"
+    },
+    {
+      "method": "PUT",
+      "path": "/store/coupons/{uuid}",
+      "operationId": "updateStoreCoupon"
+    },
+    {
+      "method": "GET",
+      "path": "/store/discounts/agents/{uuid}",
+      "operationId": "getAgentDiscountPolicy"
+    },
+    {
+      "method": "PUT",
+      "path": "/store/discounts/agents/{uuid}",
+      "operationId": "saveAgentDiscountPolicy"
+    },
+    {
+      "method": "GET",
+      "path": "/store/shipping-options",
+      "operationId": "listStoreShippingOptions"
+    },
+    {
+      "method": "GET",
+      "path": "/crm/stages",
+      "operationId": "listCrmStages"
+    },
+    {
+      "method": "POST",
+      "path": "/crm/stages",
+      "operationId": "createCrmStage"
+    },
+    {
+      "method": "PATCH",
+      "path": "/crm/stages/{stage_uuid}",
+      "operationId": "updateCrmStage"
+    },
+    {
+      "method": "DELETE",
+      "path": "/crm/stages/{stage_uuid}",
+      "operationId": "deleteCrmStage"
+    },
+    {
+      "method": "PUT",
+      "path": "/crm/stage-order",
+      "operationId": "reorderCrmStages"
+    },
+    {
+      "method": "GET",
+      "path": "/crm/opportunities",
+      "operationId": "listCrmOpportunities"
+    },
+    {
+      "method": "POST",
+      "path": "/crm/opportunities",
+      "operationId": "createCrmOpportunity"
+    },
+    {
+      "method": "GET",
+      "path": "/crm/opportunities/{opportunity_uuid}",
+      "operationId": "getCrmOpportunity"
+    },
+    {
+      "method": "PATCH",
+      "path": "/crm/opportunities/{opportunity_uuid}",
+      "operationId": "updateCrmOpportunity"
+    },
+    {
+      "method": "DELETE",
+      "path": "/crm/opportunities/{opportunity_uuid}",
+      "operationId": "archiveCrmOpportunity"
+    },
+    {
+      "method": "GET",
+      "path": "/groups",
+      "operationId": "listGroups"
+    },
+    {
+      "method": "GET",
+      "path": "/groups/{uuid}",
+      "operationId": "getGroup"
+    },
+    {
+      "method": "PATCH",
+      "path": "/groups/{uuid}",
+      "operationId": "updateGroupWaitAlert"
+    },
+    {
+      "method": "GET",
+      "path": "/custom-fields",
+      "operationId": "listCustomFields"
+    },
+    {
+      "method": "POST",
+      "path": "/custom-fields",
+      "operationId": "createCustomField"
+    },
+    {
+      "method": "PATCH",
+      "path": "/custom-fields/{uuid}",
+      "operationId": "updateCustomField"
+    },
+    {
+      "method": "GET",
+      "path": "/context-panel",
+      "operationId": "getConversationPanel"
+    },
+    {
+      "method": "PUT",
+      "path": "/context-panel",
+      "operationId": "updateConversationPanel"
+    },
+    {
+      "method": "GET",
+      "path": "/conversation-fields/{key}/options",
+      "operationId": "getConversationFieldOptions"
+    },
+    {
+      "method": "PUT",
+      "path": "/conversation-fields/{key}/options",
+      "operationId": "replaceConversationFieldOptions"
+    },
+    {
+      "method": "PATCH",
+      "path": "/conversations/{uuid}/fields",
+      "operationId": "updateConversationFields"
+    },
+    {
+      "method": "GET",
+      "path": "/groups/{uuid}/distribution",
+      "operationId": "getGroupDistributionReport"
+    },
+    {
+      "method": "GET",
+      "path": "/entry-settings",
+      "operationId": "getEntrySettings"
+    },
+    {
+      "method": "PATCH",
+      "path": "/entry-settings",
+      "operationId": "updateEntrySettings"
+    },
+    {
+      "method": "GET",
+      "path": "/flows/{uuid}/entries",
+      "operationId": "getFlowEntries"
+    },
+    {
+      "method": "PATCH",
+      "path": "/flows/{uuid}/entries",
+      "operationId": "updateFlowEntries"
+    },
+    {
+      "method": "GET",
+      "path": "/keywords/{uuid}/entries",
+      "operationId": "getKeywordEntries"
+    },
+    {
+      "method": "PATCH",
+      "path": "/keywords/{uuid}/entries",
+      "operationId": "updateKeywordEntries"
+    },
+    {
+      "method": "GET",
+      "path": "/ai-agents/{uuid}/entries",
+      "operationId": "getAgentEntries"
+    },
+    {
+      "method": "PATCH",
+      "path": "/ai-agents/{uuid}/entries",
+      "operationId": "updateAgentEntries"
+    },
+    {
+      "method": "PUT",
+      "path": "/crm/opportunities/by-external-id/{external_id}",
+      "operationId": "upsertCrmOpportunity"
+    },
+    {
+      "method": "POST",
+      "path": "/crm/opportunities/upsert-batch",
+      "operationId": "upsertCrmOpportunitiesBatch"
+    },
+    {
+      "method": "GET",
+      "path": "/inbox-response-settings",
+      "operationId": "getInboxResponseSettings"
+    },
+    {
+      "method": "PUT",
+      "path": "/inbox-response-settings",
+      "operationId": "updateInboxResponseSettings"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/stale-sessions",
+      "operationId": "getStaleSessionSettings"
+    },
+    {
+      "method": "PATCH",
+      "path": "/settings/stale-sessions",
+      "operationId": "updateStaleSessionSettings"
+    },
+    {
+      "method": "POST",
+      "path": "/inbox-response-settings/recalculate",
+      "operationId": "recalculateTeamReply"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/ownerless-fallback",
+      "operationId": "getOwnerlessFallback"
+    },
+    {
+      "method": "PATCH",
+      "path": "/settings/ownerless-fallback",
+      "operationId": "updateOwnerlessFallback"
+    },
+    {
+      "method": "POST",
+      "path": "/settings/ownerless-fallback/apply",
+      "operationId": "applyOwnerlessFallback"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/ai-summaries",
+      "operationId": "getAiSummarySettings"
+    },
+    {
+      "method": "PATCH",
+      "path": "/settings/ai-summaries",
+      "operationId": "updateAiSummarySettings"
+    },
+    {
+      "method": "GET",
+      "path": "/ai-summaries/costs",
+      "operationId": "getAiSummaryCosts"
+    },
+    {
+      "method": "GET",
+      "path": "/ai-agents/usage",
+      "operationId": "getAiAgentUsage"
+    },
+    {
+      "method": "GET",
+      "path": "/channels/{uuid}/events",
+      "operationId": "listChannelEvents"
+    },
+    {
+      "method": "POST",
+      "path": "/conversations/{uuid}/messages/{messageUuid}/reaction",
+      "operationId": "reactToMessage"
+    },
+    {
+      "method": "GET",
+      "path": "/company-queries",
+      "operationId": "listCompanyQueries"
+    },
+    {
+      "method": "POST",
+      "path": "/company-queries",
+      "operationId": "createCompanyQuery"
+    },
+    {
+      "method": "PATCH",
+      "path": "/company-queries/{uuid}",
+      "operationId": "updateCompanyQuery"
+    },
+    {
+      "method": "DELETE",
+      "path": "/company-queries/{uuid}",
+      "operationId": "deleteCompanyQuery"
+    },
+    {
+      "method": "POST",
+      "path": "/company-queries/{uuid}/test",
+      "operationId": "testCompanyQuery"
+    },
+    {
+      "method": "GET",
+      "path": "/ai-agents/{uuid}",
+      "operationId": "getAiAgent"
+    },
+    {
+      "method": "PATCH",
+      "path": "/ai-agents/{uuid}",
+      "operationId": "updateAiAgentQueryPermissions"
+    },
+    {
+      "method": "POST",
+      "path": "/ai-summaries/preview",
+      "operationId": "previewAiSummary"
+    },
+    {
+      "method": "GET",
+      "path": "/ai-agents/{agentUuid}/guard-rules",
+      "operationId": "listAiAgentGuardRules"
+    },
+    {
+      "method": "POST",
+      "path": "/ai-agents/{agentUuid}/guard-rules",
+      "operationId": "createAiAgentGuardRule"
+    },
+    {
+      "method": "PATCH",
+      "path": "/ai-agents/{agentUuid}/guard-rules/{ruleUuid}",
+      "operationId": "patchAiAgentGuardRule"
+    },
+    {
+      "method": "GET",
+      "path": "/ai-agents/{agentUuid}/guard-hits",
+      "operationId": "listAiAgentGuardHits"
+    },
+    {
+      "method": "PUT",
+      "path": "/channels/{uuid}/retirement",
+      "operationId": "setChannelRetired"
+    },
+    {
+      "method": "GET",
+      "path": "/settings/ai-duty",
+      "operationId": "getAiDutySettings"
+    },
+    {
+      "method": "PUT",
+      "path": "/settings/ai-duty",
+      "operationId": "updateAiDutySettings"
+    },
+    {
+      "method": "GET",
+      "path": "/webhooks",
+      "operationId": "listWebhooks"
+    },
+    {
+      "method": "POST",
+      "path": "/webhooks",
+      "operationId": "createWebhook"
+    },
+    {
+      "method": "PUT",
+      "path": "/webhooks/{webhook_uuid}",
+      "operationId": "updateWebhook"
+    },
+    {
+      "method": "DELETE",
+      "path": "/webhooks/{webhook_uuid}",
+      "operationId": "deleteWebhook"
+    },
+    {
+      "method": "POST",
+      "path": "/webhooks/{webhook_uuid}/rotate-secret",
+      "operationId": "rotateWebhookSecret"
+    },
+    {
+      "method": "POST",
+      "path": "/webhooks/{webhook_uuid}/test",
+      "operationId": "testWebhook"
+    },
+    {
+      "method": "POST",
+      "path": "/ai-suggestions/dismiss",
+      "operationId": "dismissAiSuggestions"
+    }
+  ],
+  "changedSchemas": [
+    "Message",
+    "Operation",
+    "WebhookEventType",
+    "WebhookEvent",
+    "MessageRequest",
+    "StoreProduct",
+    "StoreProductWrite",
+    "StoreProductPatch",
+    "ConversationWebhookActor",
+    "SupportGroup",
+    "SupportGroupWaitPatch",
+    "CustomFieldDefinition",
+    "CustomFieldCreate",
+    "CustomFieldPatch",
+    "ConversationFieldOptions",
+    "ConversationFieldActor",
+    "ConversationFieldsChangedData",
+    "CompanyQueryParameter",
+    "CompanyQueryCreate",
+    "CompanyQueryPatch",
+    "CompanyQuery",
+    "CompanyQueryTestInput",
+    "AiDutySettings",
+    "AiDutyPlantao",
+    "ConversationFieldsUpdatedEvent",
+    "FieldMirror",
+    "ConversationFieldsUpdatedData",
+    "RateLimitError",
+    "AiDutyDailyTriggerCounters",
+    "AiDutySettingsRead",
+    "TemplateCreateRequest",
+    "QueuePolicy",
+    "QueuePolicyPatch",
+    "DismissAiSuggestionsInput",
+    "DismissAiSuggestionsResult"
+  ],
+  "schemas": {
+    "Message": {
+      "type": "object",
+      "required": [
+        "uuid",
+        "direction",
+        "type",
+        "status",
+        "content"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "inbound",
+            "outbound"
+          ]
+        },
+        "type": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "content": {
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {
+            "context": {
+              "$ref": "#/components/schemas/MessageQuoteContext"
+            }
+          }
+        },
+        "provider_message_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "transcript": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "deleted_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "deleted_by": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "contact",
+            "business_app",
+            null
+          ]
+        },
+        "edited_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "entry_kind": {
+          "$ref": "#/components/schemas/EntryKind"
+        },
+        "send_route": {
+          "type": "string",
+          "enum": [
+            "messages",
+            "marketing_messages"
+          ]
+        }
+      }
+    },
+    "Operation": {
+      "type": "object",
+      "required": [
+        "uuid",
+        "type",
+        "status",
+        "result",
+        "error"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "message.send",
+            "flow.execute"
+          ]
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "queued",
+            "processing",
+            "waiting",
+            "succeeded",
+            "failed"
+          ]
+        },
+        "result": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": true,
+          "properties": {
+            "send_route": {
+              "type": "string",
+              "enum": [
+                "messages",
+                "marketing_messages"
+              ]
+            }
+          }
+        },
+        "error": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "code",
+                "message"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "message": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "started_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        }
+      }
+    },
+    "WebhookEventType": {
+      "type": "string",
+      "enum": [
+        "message.received",
+        "message.status.updated",
+        "message.transcribed",
+        "message.updated",
+        "message.deleted",
+        "conversation.created",
+        "conversation.updated",
+        "flow.execution.updated",
+        "webhook.test",
+        "order.created",
+        "order.status.updated",
+        "crm.opportunity.created",
+        "crm.opportunity.updated",
+        "crm.opportunity.stage_changed",
+        "crm.opportunity.archived",
+        "conversation.assigned",
+        "conversation.status_changed",
+        "conversation.fields_changed",
+        "conversation.ai_summary",
+        "channel.status_changed",
+        "channel.account_status_changed",
+        "message.send.failed",
+        "conversation.fields.updated"
+      ]
+    },
+    "WebhookEvent": {
+      "oneOf": [
+        {
+          "$ref": "#/components/schemas/MessageReceivedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/MessageStatusUpdatedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/MessageTranscribedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/MessageUpdatedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/MessageDeletedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/ConversationCreatedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/ConversationUpdatedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/FlowExecutionUpdatedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/WebhookTestEvent"
+        },
+        {
+          "$ref": "#/components/schemas/OrderCreatedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/OrderStatusUpdatedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/CrmOpportunityCreatedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/CrmOpportunityUpdatedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/CrmOpportunityStageChangedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/CrmOpportunityArchivedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/ConversationAssignedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/ConversationStatusChangedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/ConversationFieldsChangedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/ConversationAiSummaryEvent"
+        },
+        {
+          "$ref": "#/components/schemas/ChannelStatusChangedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/ChannelAccountStatusChangedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/MessageSendFailedEvent"
+        },
+        {
+          "$ref": "#/components/schemas/ConversationFieldsUpdatedEvent"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type",
+        "mapping": {
+          "message.received": "#/components/schemas/MessageReceivedEvent",
+          "message.status.updated": "#/components/schemas/MessageStatusUpdatedEvent",
+          "message.transcribed": "#/components/schemas/MessageTranscribedEvent",
+          "message.updated": "#/components/schemas/MessageUpdatedEvent",
+          "message.deleted": "#/components/schemas/MessageDeletedEvent",
+          "conversation.created": "#/components/schemas/ConversationCreatedEvent",
+          "conversation.updated": "#/components/schemas/ConversationUpdatedEvent",
+          "flow.execution.updated": "#/components/schemas/FlowExecutionUpdatedEvent",
+          "webhook.test": "#/components/schemas/WebhookTestEvent",
+          "order.created": "#/components/schemas/OrderCreatedEvent",
+          "order.status.updated": "#/components/schemas/OrderStatusUpdatedEvent",
+          "crm.opportunity.created": "#/components/schemas/CrmOpportunityCreatedEvent",
+          "crm.opportunity.updated": "#/components/schemas/CrmOpportunityUpdatedEvent",
+          "crm.opportunity.stage_changed": "#/components/schemas/CrmOpportunityStageChangedEvent",
+          "crm.opportunity.archived": "#/components/schemas/CrmOpportunityArchivedEvent",
+          "conversation.fields_changed": "#/components/schemas/ConversationFieldsChangedEvent",
+          "channel.status_changed": "#/components/schemas/ChannelStatusChangedEvent",
+          "conversation.ai_summary": "#/components/schemas/ConversationAiSummaryEvent",
+          "channel.account_status_changed": "#/components/schemas/ChannelAccountStatusChangedEvent",
+          "message.send.failed": "#/components/schemas/MessageSendFailedEvent",
+          "conversation.assigned": "#/components/schemas/ConversationAssignedEvent",
+          "conversation.status_changed": "#/components/schemas/ConversationStatusChangedEvent",
+          "conversation.fields.updated": "#/components/schemas/ConversationFieldsUpdatedEvent"
+        }
+      }
+    },
+    "MessageRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "recipient",
+            "type",
+            "content"
+          ],
+          "properties": {
+            "channel_uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "recipient": {
+              "$ref": "#/components/schemas/Recipient"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "text"
+              ]
+            },
+            "content": {
+              "type": "object",
+              "required": [
+                "text"
+              ],
+              "properties": {
+                "text": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              }
+            },
+            "replyToMessageUuid": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "recipient",
+            "type",
+            "content"
+          ],
+          "properties": {
+            "channel_uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "recipient": {
+              "$ref": "#/components/schemas/Recipient"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "template"
+              ]
+            },
+            "content": {
+              "type": "object",
+              "required": [
+                "name"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "language": {
+                  "type": "string"
+                },
+                "parameters": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "components": {
+                  "$ref": "#/components/schemas/TemplateSendComponents"
+                }
+              }
+            },
+            "marketingMessages": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "required": [
+            "recipient",
+            "type",
+            "content"
+          ],
+          "properties": {
+            "channel_uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "recipient": {
+              "$ref": "#/components/schemas/Recipient"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "media"
+              ]
+            },
+            "content": {
+              "type": "object",
+              "required": [
+                "media_uuid"
+              ],
+              "properties": {
+                "media_uuid": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "caption": {
+                  "type": "string",
+                  "maxLength": 1024
+                }
+              }
+            },
+            "replyToMessageUuid": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      ]
+    },
+    "StoreProduct": {
+      "type": "object",
+      "required": [
+        "uuid",
+        "name",
+        "price_cents",
+        "active",
+        "installments_max",
+        "min_installment_cents",
+        "listed"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "category_uuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "price_cents": {
+          "type": "integer"
+        },
+        "promo_price_cents": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "effective_price_cents": {
+          "type": "integer"
+        },
+        "images": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "highlighted": {
+          "type": "boolean"
+        },
+        "track_stock": {
+          "type": "boolean"
+        },
+        "stock": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "position": {
+          "type": "integer"
+        },
+        "import_handle": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "external_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "variants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/StoreProductVariant"
+          }
+        },
+        "created_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "updated_at": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "installments_max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 12
+        },
+        "min_installment_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100000000
+        },
+        "listed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "StoreProductWrite": {
+      "type": "object",
+      "required": [
+        "name",
+        "price_cents"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "category_uuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "category_external_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "price_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "promo_price_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "highlighted": {
+          "type": "boolean"
+        },
+        "track_stock": {
+          "type": "boolean"
+        },
+        "stock": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "import_handle": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 255
+        },
+        "external_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "variants": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "required": [
+              "label"
+            ],
+            "properties": {
+              "uuid": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "price_cents": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "stock": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "active": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "image_urls": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          }
+        },
+        "installments_max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 12
+        },
+        "min_installment_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100000000
+        },
+        "listed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "StoreProductPatch": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2000
+        },
+        "category_uuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "category_external_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "price_cents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "promo_price_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "highlighted": {
+          "type": "boolean"
+        },
+        "track_stock": {
+          "type": "boolean"
+        },
+        "stock": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "import_handle": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 255
+        },
+        "external_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "variants": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "required": [
+              "label"
+            ],
+            "properties": {
+              "uuid": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "format": "uuid"
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 80
+              },
+              "price_cents": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "stock": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0
+              },
+              "active": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "image_urls": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          }
+        },
+        "installments_max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 12
+        },
+        "min_installment_cents": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100000000
+        },
+        "listed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "ConversationWebhookActor": {
+      "type": "object",
+      "required": [
+        "type",
+        "user",
+        "integration_uuid"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "user",
+            "flow",
+            "ai_agent",
+            "api",
+            "mcp",
+            "system",
+            "integration"
+          ]
+        },
+        "user": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "uuid",
+            "name"
+          ],
+          "properties": {
+            "uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "integration_uuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "name": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "crm_mirror"
+          ]
+        }
+      }
+    },
+    "SupportGroup": {
+      "type": "object",
+      "required": [
+        "uuid",
+        "name",
+        "wait_alert_minutes",
+        "distribution_strategy",
+        "queue_when_unavailable",
+        "distribution_schedule_uuid",
+        "queue_batch_per_agent",
+        "queue_opening_delay_minutes",
+        "queue_max_per_agent",
+        "queue_open_window_first",
+        "queue_policy"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string"
+        },
+        "wait_alert_minutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 43200
+        },
+        "distribution_strategy": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "least_busy",
+            "round_robin",
+            "random",
+            "balanced_daily",
+            null
+          ]
+        },
+        "queue_when_unavailable": {
+          "type": "boolean",
+          "default": false
+        },
+        "distribution_schedule_uuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "queue_batch_per_agent": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "queue_opening_delay_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1440,
+          "default": 15
+        },
+        "queue_max_per_agent": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "queue_open_window_first": {
+          "type": "boolean"
+        },
+        "queue_policy": {
+          "$ref": "#/components/schemas/QueuePolicy"
+        }
+      }
+    },
+    "SupportGroupWaitPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "wait_alert_minutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 43200
+        },
+        "distribution_strategy": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "least_busy",
+            "round_robin",
+            "random",
+            "balanced_daily",
+            null
+          ]
+        },
+        "queue_when_unavailable": {
+          "type": "boolean",
+          "default": false
+        },
+        "distribution_schedule_uuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "queue_batch_per_agent": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "queue_opening_delay_minutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1440,
+          "default": 15
+        },
+        "queue_max_per_agent": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 2147483647
+        },
+        "queue_open_window_first": {
+          "type": "boolean"
+        },
+        "queue_policy": {
+          "$ref": "#/components/schemas/QueuePolicyPatch"
+        }
+      },
+      "minProperties": 1
+    },
+    "CustomFieldDefinition": {
+      "type": "object",
+      "required": [
+        "uuid",
+        "key",
+        "label",
+        "type",
+        "scope",
+        "section",
+        "position",
+        "multiline",
+        "hideWhenEmpty",
+        "options"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "number",
+            "date",
+            "datetime",
+            "select"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "contact",
+            "conversation"
+          ],
+          "default": "contact"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "active": {
+          "type": "boolean",
+          "default": true
+        },
+        "showToClient": {
+          "type": "boolean",
+          "default": false
+        },
+        "section": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        },
+        "position": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "multiline": {
+          "type": "boolean",
+          "default": false
+        },
+        "hideWhenEmpty": {
+          "type": "boolean",
+          "default": false
+        },
+        "readOnly": {
+          "type": "boolean",
+          "default": false
+        },
+        "options": {
+          "$ref": "#/components/schemas/FieldOptions"
+        },
+        "linkTemplate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        },
+        "linkLabel": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "hideWhenEqualsNative": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "name",
+            "email",
+            null
+          ]
+        },
+        "mirror": {
+          "$ref": "#/components/schemas/FieldMirror"
+        }
+      }
+    },
+    "CustomFieldCreate": {
+      "type": "object",
+      "required": [
+        "key",
+        "label",
+        "type"
+      ],
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "number",
+            "date",
+            "datetime",
+            "select"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "contact",
+            "conversation"
+          ],
+          "default": "contact"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "active": {
+          "type": "boolean",
+          "default": true
+        },
+        "showToClient": {
+          "type": "boolean",
+          "default": false
+        },
+        "section": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        },
+        "position": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "multiline": {
+          "type": "boolean",
+          "default": false
+        },
+        "hideWhenEmpty": {
+          "type": "boolean",
+          "default": false
+        },
+        "readOnly": {
+          "type": "boolean",
+          "default": false
+        },
+        "options": {
+          "$ref": "#/components/schemas/FieldOptions"
+        },
+        "optionsPatch": {
+          "$ref": "#/components/schemas/FieldOptionsPatch"
+        },
+        "linkTemplate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        },
+        "linkLabel": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "hideWhenEqualsNative": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "name",
+            "email",
+            null
+          ]
+        },
+        "mirror": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "idAlias": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 30,
+              "pattern": "^[a-z0-9_]+$"
+            }
+          }
+        }
+      }
+    },
+    "CustomFieldPatch": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "text",
+            "number",
+            "date",
+            "datetime",
+            "select"
+          ]
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "contact",
+            "conversation"
+          ],
+          "default": "contact"
+        },
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        },
+        "required": {
+          "type": "boolean",
+          "default": false
+        },
+        "active": {
+          "type": "boolean",
+          "default": true
+        },
+        "showToClient": {
+          "type": "boolean",
+          "default": false
+        },
+        "section": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 80
+        },
+        "position": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        "multiline": {
+          "type": "boolean",
+          "default": false
+        },
+        "hideWhenEmpty": {
+          "type": "boolean",
+          "default": false
+        },
+        "readOnly": {
+          "type": "boolean",
+          "default": false
+        },
+        "options": {
+          "$ref": "#/components/schemas/FieldOptions"
+        },
+        "optionsPatch": {
+          "$ref": "#/components/schemas/FieldOptionsPatch"
+        },
+        "linkTemplate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 2048
+        },
+        "linkLabel": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 120
+        },
+        "hideWhenEqualsNative": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "name",
+            "email",
+            null
+          ]
+        },
+        "mirror": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "idAlias": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1,
+              "maxLength": 30,
+              "pattern": "^[a-z0-9_]+$"
+            }
+          }
+        }
+      }
+    },
+    "ConversationFieldOptions": {
+      "type": "object",
+      "required": [
+        "key",
+        "type",
+        "options"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "select"
+          ]
+        },
+        "options": {
+          "$ref": "#/components/schemas/FieldOptions"
+        },
+        "mirror": {
+          "$ref": "#/components/schemas/FieldMirror"
+        }
+      }
+    },
+    "ConversationFieldActor": {
+      "type": "object",
+      "required": [
+        "type",
+        "user",
+        "integration_uuid"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "user",
+            "flow",
+            "ai_agent",
+            "api",
+            "mcp",
+            "system",
+            "integration"
+          ]
+        },
+        "user": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "uuid",
+            "name"
+          ],
+          "properties": {
+            "uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "integration_uuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "email": {
+          "type": "string",
+          "format": "email"
+        },
+        "name": {
+          "type": "string"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "crm_mirror"
+          ]
+        }
+      }
+    },
+    "ConversationFieldsChangedData": {
+      "type": "object",
+      "required": [
+        "conversation",
+        "contact",
+        "changes",
+        "actor"
+      ],
+      "properties": {
+        "conversation": {
+          "type": "object",
+          "required": [
+            "uuid",
+            "status",
+            "channel"
+          ],
+          "properties": {
+            "uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string"
+            },
+            "channel": {
+              "type": "object",
+              "required": [
+                "uuid",
+                "provider"
+              ],
+              "properties": {
+                "uuid": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "provider": {
+                  "type": "string"
+                }
+              }
+            },
+            "fields_snapshot": {
+              "type": "object",
+              "required": [
+                "uuid_crm"
+              ],
+              "properties": {
+                "uuid_crm": {}
+              }
+            }
+          }
+        },
+        "contact": {
+          "type": "object",
+          "required": [
+            "uuid",
+            "external_id"
+          ],
+          "properties": {
+            "uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "external_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/components/schemas/ConversationFieldChange"
+          }
+        },
+        "actor": {
+          "$ref": "#/components/schemas/ConversationFieldActor"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "crm_mirror"
+          ]
+        },
+        "origin_integration_uuid": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "CompanyQueryParameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "required"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "enum": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          }
+        },
+        "maxLength": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120,
+          "default": 120
+        },
+        "source": {
+          "type": "string",
+          "enum": [
+            "argument",
+            "contact_uuid",
+            "last_paid_store_order_uuid"
+          ]
+        }
+      }
+    },
+    "CompanyQueryCreate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "description",
+        "url"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/CompanyQueryParameter"
+          }
+        },
+        "authHeaderName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "credentialFromKnowledgeSourceUuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 6
+        },
+        "maxResponseChars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6000,
+          "default": 4000
+        },
+        "isActive": {
+          "type": "boolean",
+          "default": false
+        },
+        "authHeaderValue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192,
+          "writeOnly": true
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "GET"
+        }
+      }
+    },
+    "CompanyQueryPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/CompanyQueryParameter"
+          }
+        },
+        "authHeaderName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "credentialFromKnowledgeSourceUuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 6
+        },
+        "maxResponseChars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6000,
+          "default": 4000
+        },
+        "isActive": {
+          "type": "boolean",
+          "default": false
+        },
+        "authHeaderValue": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192,
+          "writeOnly": true
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ]
+        }
+      }
+    },
+    "CompanyQuery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "uuid",
+        "name",
+        "description",
+        "url",
+        "parameters",
+        "authHeaderConfigured",
+        "isActive",
+        "method"
+      ],
+      "properties": {
+        "uuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 40,
+          "minLength": 1,
+          "pattern": "^[a-z][a-z0-9]*(?:_[a-z0-9]+)*$"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 600
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/CompanyQueryParameter"
+          }
+        },
+        "authHeaderName": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 100
+        },
+        "credentialFromKnowledgeSourceUuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "timeoutSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "default": 6
+        },
+        "maxResponseChars": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 6000,
+          "default": 4000
+        },
+        "isActive": {
+          "type": "boolean",
+          "default": false
+        },
+        "authHeaderConfigured": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date-time"
+        },
+        "method": {
+          "type": "string",
+          "enum": [
+            "GET",
+            "POST"
+          ],
+          "default": "GET"
+        }
+      }
+    },
+    "CompanyQueryTestInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "args": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "default": {}
+        },
+        "contactUuid": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "AiDutySettings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "agentUuid",
+        "channels",
+        "dailyLimit"
+      ],
+      "properties": {
+        "summaryNotesEnabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "suggestionsEnabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "desligado",
+            "sombra",
+            "nota",
+            "plantao"
+          ],
+          "default": "desligado"
+        },
+        "agentUuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "whatsapp"
+            ]
+          },
+          "maxItems": 1,
+          "default": [
+            "whatsapp"
+          ]
+        },
+        "dailyLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 60
+        },
+        "plantao": {
+          "$ref": "#/components/schemas/AiDutyPlantao"
+        }
+      }
+    },
+    "AiDutyPlantao": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "groups"
+      ],
+      "properties": {
+        "retomadaContextual": {
+          "type": "boolean",
+          "default": true
+        },
+        "leituraContexto": {
+          "type": "boolean",
+          "default": true
+        },
+        "leituraModelo": {
+          "type": "string",
+          "default": "claude-haiku-5-5"
+        },
+        "umaVozPorConversa": {
+          "type": "boolean",
+          "default": true
+        },
+        "janelaContato": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "inicio",
+            "fim"
+          ],
+          "properties": {
+            "inicio": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+              "default": "08:00"
+            },
+            "fim": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+              "default": "22:00"
+            }
+          }
+        },
+        "respostaRapidaMinutos": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 120,
+          "default": 20
+        },
+        "limiteDiario": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 300
+        },
+        "groups": {
+          "type": "array",
+          "maxItems": 50,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "groupUuid"
+            ],
+            "properties": {
+              "groupUuid": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "retomadaModo": {
+                "type": "string",
+                "enum": [
+                  "nota",
+                  "enviar"
+                ],
+                "default": "nota"
+              },
+              "ausenteImediato": {
+                "type": "boolean",
+                "default": false
+              },
+              "presenteSemRespostaMinutos": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "default": null,
+                "anyOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "enum": [
+                      0
+                    ]
+                  },
+                  {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 180
+                  }
+                ]
+              },
+              "supervisorUuids": {
+                "type": "array",
+                "maxItems": 20,
+                "items": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "default": []
+              }
+            }
+          }
+        },
+        "retomadaMinutos": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 1380,
+          "default": 60,
+          "deprecated": true
+        },
+        "retomadaCadenciaMinutos": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "type": "integer",
+            "minimum": 15,
+            "maximum": 1380
+          },
+          "default": [
+            60,
+            240
+          ]
+        },
+        "retomadaJanela": {
+          "type": "object",
+          "deprecated": true,
+          "additionalProperties": false,
+          "required": [
+            "inicio",
+            "fim"
+          ],
+          "properties": {
+            "inicio": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+              "default": "08:00"
+            },
+            "fim": {
+              "type": "string",
+              "pattern": "^(?:[01]\\d|2[0-3]):[0-5]\\d$",
+              "default": "22:00"
+            }
+          }
+        },
+        "retomadaLimiteDiario": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100
+        },
+        "notaForaDoPlantao": {
+          "type": "boolean",
+          "default": false
+        },
+        "gatilhoAusente": {
+          "type": "boolean",
+          "default": true
+        },
+        "carenciaDonoAtivo": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "janelaMinutos": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1440,
+              "default": 60
+            },
+            "esperaMinutos": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 180,
+              "default": 3
+            }
+          }
+        },
+        "gatilhoRetomada": {
+          "type": "boolean",
+          "default": true
+        },
+        "regras": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "r1": {
+              "type": "boolean",
+              "default": true
+            },
+            "r2": {
+              "type": "boolean",
+              "default": true
+            },
+            "r3": {
+              "type": "boolean",
+              "default": true
+            },
+            "r4": {
+              "type": "boolean",
+              "default": true
+            },
+            "r5": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        }
+      }
+    },
+    "ConversationFieldsUpdatedEvent": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "api_version",
+        "occurred_at",
+        "data"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "api_version": {
+          "type": "string",
+          "enum": [
+            "v1"
+          ]
+        },
+        "occurred_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "conversation.fields.updated"
+          ]
+        },
+        "data": {
+          "$ref": "#/components/schemas/ConversationFieldsUpdatedData"
+        }
+      }
+    },
+    "FieldMirror": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "terminalValues"
+      ],
+      "properties": {
+        "idAlias": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 30,
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "integrationUuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "terminalValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "ConversationFieldsUpdatedData": {
+      "type": "object",
+      "required": [
+        "conversation",
+        "contact",
+        "changes",
+        "actor"
+      ],
+      "properties": {
+        "conversation": {
+          "type": "object",
+          "required": [
+            "uuid",
+            "status",
+            "channel"
+          ],
+          "properties": {
+            "uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string"
+            },
+            "channel": {
+              "type": "object",
+              "required": [
+                "uuid",
+                "provider"
+              ],
+              "properties": {
+                "uuid": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "provider": {
+                  "type": "string"
+                }
+              }
+            },
+            "fields_snapshot": {
+              "type": "object",
+              "required": [
+                "uuid_crm"
+              ],
+              "properties": {
+                "uuid_crm": {}
+              }
+            }
+          }
+        },
+        "contact": {
+          "type": "object",
+          "required": [
+            "uuid",
+            "external_id"
+          ],
+          "properties": {
+            "uuid": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "external_id": {
+              "type": "null"
+            }
+          }
+        },
+        "changes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/components/schemas/ConversationFieldChange"
+          }
+        },
+        "actor": {
+          "$ref": "#/components/schemas/ConversationFieldActor"
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "crm_mirror"
+          ]
+        },
+        "origin_integration_uuid": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "RateLimitError": {
+      "allOf": [
+        {
+          "$ref": "#/components/schemas/Error"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "error": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "rate_limit_exceeded"
+                  ]
+                },
+                "details": {
+                  "type": "object",
+                  "required": [
+                    "budget",
+                    "limit",
+                    "remaining",
+                    "reset_seconds"
+                  ],
+                  "properties": {
+                    "budget": {
+                      "type": "string",
+                      "enum": [
+                        "read",
+                        "write"
+                      ]
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "minimum": 1
+                    },
+                    "remaining": {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    "reset_seconds": {
+                      "type": "integer",
+                      "minimum": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "AiDutyDailyTriggerCounters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decisoes",
+        "enviadas",
+        "suprimidasPorRegra",
+        "suprimidasPorCota",
+        "invalidas",
+        "invalidasPorMotivo"
+      ],
+      "properties": {
+        "decisoes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "enviadas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "suprimidasPorRegra": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "suprimidasPorCota": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalidas": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "invalidasPorMotivo": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "json",
+            "schema",
+            "finish_reason",
+            "unavailable"
+          ],
+          "properties": {
+            "json": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "schema": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "finish_reason": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unavailable": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "AiDutySettingsRead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "agentUuid",
+        "channels",
+        "dailyLimit",
+        "dailyCounters"
+      ],
+      "properties": {
+        "summaryNotesEnabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "suggestionsEnabled": {
+          "type": "boolean",
+          "default": true
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "desligado",
+            "sombra",
+            "nota",
+            "plantao"
+          ],
+          "default": "desligado"
+        },
+        "agentUuid": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "channels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "whatsapp"
+            ]
+          },
+          "maxItems": 1,
+          "default": [
+            "whatsapp"
+          ]
+        },
+        "dailyLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 60
+        },
+        "plantao": {
+          "$ref": "#/components/schemas/AiDutyPlantao"
+        },
+        "dailyCounters": {
+          "type": "object",
+          "readOnly": true,
+          "additionalProperties": false,
+          "required": [
+            "day",
+            "timezone",
+            "porGatilho"
+          ],
+          "properties": {
+            "day": {
+              "type": "string",
+              "format": "date"
+            },
+            "timezone": {
+              "type": "string"
+            },
+            "porGatilho": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "A",
+                "B",
+                "C"
+              ],
+              "properties": {
+                "A": {
+                  "$ref": "#/components/schemas/AiDutyDailyTriggerCounters"
+                },
+                "B": {
+                  "$ref": "#/components/schemas/AiDutyDailyTriggerCounters"
+                },
+                "C": {
+                  "$ref": "#/components/schemas/AiDutyDailyTriggerCounters"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "TemplateCreateRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "language",
+        "category"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "maxLength": 512,
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "language": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(_[A-Z]{2})?$"
+        },
+        "category": {
+          "type": "string",
+          "enum": [
+            "AUTHENTICATION"
+          ]
+        },
+        "add_security_recommendation": {
+          "type": "boolean",
+          "default": true
+        },
+        "code_expiration_minutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 90
+        },
+        "button_text": {
+          "type": "string",
+          "maxLength": 25
+        },
+        "channel_uuid": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    },
+    "QueuePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "rosterDays",
+        "historyDays",
+        "deadlinePercentile",
+        "deadlineGraceMinutes",
+        "reservationMaxMinutesAfterOpening",
+        "minimumHistory",
+        "doseSize",
+        "doseIntervalMinutes",
+        "urgentWindowMinutes",
+        "historyStartDate"
+      ],
+      "properties": {
+        "rosterDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 7
+        },
+        "historyDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 30
+        },
+        "deadlinePercentile": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 99,
+          "default": 75
+        },
+        "deadlineGraceMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1440,
+          "default": 30
+        },
+        "reservationMaxMinutesAfterOpening": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1440,
+          "default": 1440
+        },
+        "minimumHistory": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 5
+        },
+        "doseSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647,
+          "default": 5
+        },
+        "doseIntervalMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1440,
+          "default": 10
+        },
+        "urgentWindowMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1440,
+          "default": 120
+        },
+        "historyStartDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        }
+      }
+    },
+    "QueuePolicyPatch": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rosterDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 7
+        },
+        "historyDays": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 30
+        },
+        "deadlinePercentile": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 99,
+          "default": 75
+        },
+        "deadlineGraceMinutes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1440,
+          "default": 30
+        },
+        "reservationMaxMinutesAfterOpening": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1440,
+          "default": 1440
+        },
+        "minimumHistory": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 365,
+          "default": 5
+        },
+        "doseSize": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2147483647,
+          "default": 5
+        },
+        "doseIntervalMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1440,
+          "default": 10
+        },
+        "urgentWindowMinutes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1440,
+          "default": 120
+        },
+        "historyStartDate": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "date"
+        }
+      }
+    },
+    "DismissAiSuggestionsInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dryRun": {
+          "type": "boolean",
+          "default": true
+        },
+        "sellerUuid": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "createdBefore": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "DismissAiSuggestionsResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "dismissed",
+        "bySeller"
+      ],
+      "properties": {
+        "dismissed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bySeller": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sellerUuid",
+              "name",
+              "count"
+            ],
+            "properties": {
+              "sellerUuid": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "name": {
+                "type": "string"
+              },
+              "count": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/settings/ai-duty": {
+      "get": {
+        "response": {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "data": {
+              "$ref": "#/components/schemas/AiDutySettingsRead"
+            }
+          }
+        }
+      },
+      "put": {
+        "request": {
+          "$ref": "#/components/schemas/AiDutySettings"
+        },
+        "response": {
+          "$ref": "#/components/schemas/AiDutySettingsResponse"
+        }
+      }
+    },
+    "/conversation-fields/{key}/options": {
+      "get": {
+        "response": {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "data": {
+              "$ref": "#/components/schemas/ConversationFieldOptions"
+            }
+          }
+        }
+      },
+      "put": {
+        "request": {
+          "type": "object",
+          "required": [
+            "options"
+          ],
+          "properties": {
+            "options": {
+              "$ref": "#/components/schemas/FieldOptions"
+            },
+            "mirror": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "idAlias": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "maxLength": 30,
+                  "pattern": "^[a-z0-9_]+$"
+                },
+                "terminal_values": {
+                  "type": "array",
+                  "maxItems": 2000,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "data": {
+              "$ref": "#/components/schemas/ConversationFieldOptions"
+            },
+            "diff": {
+              "type": "object",
+              "required": [
+                "added",
+                "removed",
+                "renamed"
+              ],
+              "properties": {
+                "added": {
+                  "$ref": "#/components/schemas/FieldOptions"
+                },
+                "removed": {
+                  "$ref": "#/components/schemas/FieldOptions"
+                },
+                "renamed": {
+                  "$ref": "#/components/schemas/FieldOptions"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/keywords/{uuid}/entries": {
+      "get": {
+        "response": {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "data": {
+              "type": "object",
+              "required": [
+                "uuid",
+                "supported_entries",
+                "run_when_assigned"
+              ],
+              "properties": {
+                "uuid": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "supported_entries": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EntryKind"
+                  }
+                },
+                "run_when_assigned": {
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "request": {
+          "type": "object",
+          "required": [
+            "supported_entries"
+          ],
+          "properties": {
+            "supported_entries": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/EntryKind"
+              }
+            },
+            "run_when_assigned": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "required": [
+            "data"
+          ],
+          "properties": {
+            "data": {
+              "type": "object",
+              "required": [
+                "uuid",
+                "supported_entries",
+                "run_when_assigned"
+              ],
+              "properties": {
+                "uuid": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "supported_entries": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EntryKind"
+                  }
+                },
+                "run_when_assigned": {
+                  "type": "boolean",
+                  "default": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/company-queries/{uuid}/test": {
+      "post": {
+        "request": {
+          "$ref": "#/components/schemas/CompanyQueryTestInput"
+        },
+        "response": {
+          "$ref": "#/components/schemas/CompanyQueryTestResult"
+        }
+      }
+    },
+    "/ai-suggestions/dismiss": {
+      "post": {
+        "request": {
+          "$ref": "#/components/schemas/DismissAiSuggestionsInput"
+        },
+        "response": {
+          "$ref": "#/components/schemas/DismissAiSuggestionsResult"
+        }
+      }
+    }
+  }
+}
