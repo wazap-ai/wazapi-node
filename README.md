@@ -506,4 +506,9 @@ confirmed payment consumes it. Refunds do not automatically restore a use.
 
 - **Marketing Messages (1.48):** `sendMessage({ type: 'template', marketingMessages: true, ... })` routes a MARKETING template through MM Lite when the channel is onboarded; the route taken is `result.send_route` of the operation and `send_route` of the `Message`.
 - **Plantão (1.49–1.56):** `AiDutySettings.mode` accepts `'plantao'` with a `plantao` block (`groups`, triggers A/B/C, `regras.r1..r5`); `getAiDutySettings()` also returns `dailyCounters` per trigger.
+- **Products (1.58–1.59):** `installments_max`, `min_installment_cents` and `listed` on products, and `listStoreProducts({ listed })`. `listed: false` keeps an active product out of the storefront and the Meta catalog, available to orders, flows and AI.
+- **Company queries (1.59):** `method: 'POST'`, parameters filled by the server (`source`) and `testCompanyQuery(uuid, args, { contactUuid })`. A POST test runs the real request, even on an inactive query.
+- **Plantão and queue (1.60):** `retomadaContextual`, `leituraContexto`, `leituraModelo`, `umaVozPorConversa`, `summaryNotesEnabled` and `suggestionsEnabled`; `queue_policy` on groups, partial on `updateGroup`. `queue_batch_per_agent`, `queue_max_per_agent` and `queue_open_window_first` stay for compatibility, and the sales queue ignores them.
+- **Bulk dismissal (1.61):** `dismissAiSuggestions({ dryRun, sellerUuid, createdBefore })` previews by default and only writes with `dryRun: false`. Requires `conversations:write`.
+- **Keywords (1.63):** `run_when_assigned` on `getKeywordEntries` and `updateKeywordEntries(uuid, entries, { run_when_assigned })`: a real button click may run the flow on an assigned conversation, and the assignee stays.
 - **Fields (1.53):** `datetime` custom fields, `mirror` on definitions and select options, the `conversation.fields.updated` webhook and the `integration` actor.
